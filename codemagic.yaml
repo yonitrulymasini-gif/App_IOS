@@ -7,13 +7,11 @@ workflows:
       flutter: stable
       xcode: latest
       cocoapods: default
+    # Si ton pubspec.yaml est dans App_IOS/terrarium_app/, décommente la ligne suivante :
+    # working_directory: terrarium_app
     scripts:
       - name: Get packages
         script: flutter packages pub get
-      - name: Pod install
-        script: |
-          cd ios
-          pod install
       - name: Build iOS unsigned for sideload
         script: flutter build ios --release --no-codesign
       - name: Package unsigned IPA
