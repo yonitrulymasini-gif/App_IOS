@@ -3,10 +3,15 @@ import 'package:mqtt_client/mqtt_client.dart';
 import 'package:mqtt_client/mqtt_server_client.dart';
 import 'scenarios_screen.dart';
 
-
 class DashboardScreen extends StatefulWidget {
   final String deviceId;
-  const DashboardScreen({super.key, required this.deviceId});
+  final String deviceName;
+  const DashboardScreen({
+    super.key,
+    required this.deviceId,
+    required this.deviceName,
+  });
+
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
@@ -18,92 +23,102 @@ class _DashboardScreenState extends State<DashboardScreen> {
   List<String> relayIcons = ['🔌', '🔌', '🔌', '🔌'];
   bool connected = false;
 
-final List<Map<String, String>> availableIcons = [
-  {'icon': '💡', 'label': 'LED'},
-  {'icon': '💧', 'label': 'Brumisateur'},
-  {'icon': '🔥', 'label': 'Chauffage'},
-  {'icon': '🌀', 'label': 'Ventilateur'},
-  {'icon': '📷', 'label': 'Caméra'},
-  {'icon': '🔌', 'label': 'Autre'},
-];
+  final List<Map<String, String>> availableIcons = [
+    {'icon': '💡', 'label': 'LED'},
+    {'icon': '💧', 'label': 'Brumisateur'},
+    {'icon': '🔥', 'label': 'Chauffage'},
+    {'icon': '🌀', 'label': 'Ventilateur'},
+    {'icon': '📷', 'label': 'Caméra'},
+    {'icon': '🔌', 'label': 'Autre'},
+  ];
 
-void _editRelay(int index) {
-  final nameController = TextEditingController(text: relayNames[index]);
-  String selectedIcon = relayIcons[index];
+  void _editRelay(int index) {
+    final nameController = TextEditingController(text: relayNames[index]);
+    String selectedIcon = relayIcons[index];
 
-  showModalBottomSheet(
-    context: context,
-    builder: (ctx) => StatefulBuilder(
-      builder: (ctx, setModalState) => Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text('Personnaliser la prise',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500)),
-            const SizedBox(height: 16),
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(
-                labelText: 'Nom de la prise',
-                border: OutlineInputBorder(),
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF242B24),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text('Personnaliser la prise',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500,
+                  color: Color(0xFFE8F0E8))),
+              const SizedBox(height: 16),
+              TextField(
+                controller: nameController,
+                style: const TextStyle(color: Color(0xFFE8F0E8)),
+                decoration: const InputDecoration(
+                  labelText: 'Nom de la prise',
+                  labelStyle: TextStyle(color: Color(0xFF6B8F6B)),
+                  enabledBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: Color(0xFF2D3F2D))),
+                  focusedBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: Color(0xFF4ADE80))),
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            const Text('Icône', style: TextStyle(fontWeight: FontWeight.w500)),
-            const SizedBox(height: 8),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: availableIcons.map((item) => GestureDetector(
-                  onTap: () => setModalState(() => selectedIcon = item['icon']!),
-                  child: Container(
-                    width: 72,
-                    margin: const EdgeInsets.only(right: 8),
-                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        color: selectedIcon == item['icon']
-                          ? Theme.of(context).colorScheme.primary
-                          : Colors.grey.shade300,
-                        width: selectedIcon == item['icon'] ? 2 : 1,
-                      ),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      children: [
-                        Text(item['icon']!, style: const TextStyle(fontSize: 24)),
-                        const SizedBox(height: 4),
-                        Text(item['label']!,
-                          style: const TextStyle(fontSize: 10),
-                          textAlign: TextAlign.center,
+              const SizedBox(height: 16),
+              const Text('Icône',
+                style: TextStyle(fontWeight: FontWeight.w500,
+                  color: Color(0xFFE8F0E8))),
+              const SizedBox(height: 8),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: availableIcons.map((item) => GestureDetector(
+                    onTap: () => setModalState(() => selectedIcon = item['icon']!),
+                    child: Container(
+                      width: 72,
+                      margin: const EdgeInsets.only(right: 8),
+                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1A1F1A),
+                        border: Border.all(
+                          color: selectedIcon == item['icon']
+                            ? const Color(0xFF4ADE80)
+                            : const Color(0xFF2D3F2D),
+                          width: selectedIcon == item['icon'] ? 2 : 1,
                         ),
-                      ],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        children: [
+                          Text(item['icon']!, style: const TextStyle(fontSize: 24)),
+                          const SizedBox(height: 4),
+                          Text(item['label']!,
+                            style: const TextStyle(fontSize: 10,
+                              color: Color(0xFF6B8F6B)),
+                            textAlign: TextAlign.center),
+                        ],
+                      ),
                     ),
-                  ),
-                )).toList(),
+                  )).toList(),
+                ),
               ),
-            ),
-            const SizedBox(height: 20),
-            FilledButton(
-              onPressed: () {
-                setState(() {
-                  relayNames[index] = nameController.text.isEmpty
-                    ? 'Prise ${index + 1}'
-                    : nameController.text;
-                  relayIcons[index] = selectedIcon;
-                });
-                Navigator.pop(ctx);
-              },
-              child: const Text('Enregistrer'),
-            ),
-          ],
+              const SizedBox(height: 20),
+              FilledButton(
+                onPressed: () {
+                  setState(() {
+                    relayNames[index] = nameController.text.isEmpty
+                      ? 'Prise ${index + 1}'
+                      : nameController.text;
+                    relayIcons[index] = selectedIcon;
+                  });
+                  Navigator.pop(ctx);
+                },
+                child: const Text('Enregistrer'),
+              ),
+            ],
+          ),
         ),
       ),
-    ),
-  );
-}  
+    );
+  }
 
   @override
   void initState() {
@@ -112,7 +127,8 @@ void _editRelay(int index) {
   }
 
   Future<void> connectMQTT() async {
-    client = MqttServerClient('broker.hivemq.com', 'terrarium_app_${DateTime.now().millisecondsSinceEpoch}');
+    client = MqttServerClient('broker.hivemq.com',
+      'terrarium_app_${DateTime.now().millisecondsSinceEpoch}');
     client.port = 1883;
     client.keepAlivePeriod = 20;
     client.onDisconnected = () => setState(() => connected = false);
@@ -120,17 +136,14 @@ void _editRelay(int index) {
     try {
       await client.connect();
       setState(() => connected = true);
-
       for (int i = 0; i < 4; i++) {
         client.subscribe('${widget.deviceId}/relay/$i/state', MqttQos.atLeastOnce);
       }
-
       client.updates!.listen((messages) {
         for (var msg in messages) {
           final topic = msg.topic;
           final payload = MqttPublishPayload.bytesToStringAsString(
-            (msg.payload as MqttPublishMessage).payload.message
-          );
+            (msg.payload as MqttPublishMessage).payload.message);
           for (int i = 0; i < 4; i++) {
             if (topic == '${widget.deviceId}/relay/$i/state') {
               setState(() => relayStates[i] = payload == 'ON');
@@ -159,51 +172,78 @@ void _editRelay(int index) {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-      title: Text(widget.deviceId),
-      actions: [
-        IconButton(
-      icon: const Icon(Icons.auto_awesome),
-      onPressed: () => Navigator.push(context, MaterialPageRoute(
-        builder: (_) => ScenariosScreen(
-          deviceId: widget.deviceId,
-          relayNames: relayNames,
-          relayIcons: relayIcons,
-        ),
-      )),
-    ),
-  ],
-),
-      body: Padding(
-  padding: const EdgeInsets.all(16),
-  child: Column(
-    children: List.generate(4, (i) => Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        leading: GestureDetector(
-          onTap: () => _editRelay(i),
-          child: Text(relayIcons[i], style: const TextStyle(fontSize: 28)),
-        ),
-        title: Text(relayNames[i]),
-        subtitle: Text(
-          relayStates[i] ? 'Allumé' : 'Éteint',
-          style: TextStyle(
-            fontSize: 12,
-            color: relayStates[i] ? Colors.green : Colors.grey,
+        title: Text(widget.deviceName),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: Icon(Icons.circle,
+              color: connected
+                ? const Color(0xFF4ADE80) : const Color(0xFF6B8F6B),
+              size: 10),
           ),
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              icon: const Icon(Icons.edit_outlined, size: 18, color: Colors.grey),
-              onPressed: () => _editRelay(i),
+          IconButton(
+            icon: const Icon(Icons.auto_awesome, color: Color(0xFF6B8F6B)),
+            onPressed: () => Navigator.push(context,
+              MaterialPageRoute(
+                builder: (_) => ScenariosScreen(
+                  deviceId: widget.deviceId,
+                  relayNames: relayNames,
+                  relayIcons: relayIcons,
+                ),
+              )),
+          ),
+        ],
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: List.generate(4, (i) => Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF242B24),
+              borderRadius: BorderRadius.circular(14),
             ),
-            Switch(
-              value: relayStates[i],
-              onChanged: connected ? (_) => toggleRelay(i) : null,
-            ),
-                ],
-              ),
+            child: Row(
+              children: [
+                Container(
+                  width: 40, height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2D3F2D),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Center(child: Text(relayIcons[i],
+                    style: const TextStyle(fontSize: 18))),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(relayNames[i],
+                        style: const TextStyle(
+                          color: Color(0xFFE8F0E8),
+                          fontWeight: FontWeight.w500, fontSize: 14)),
+                      Text(
+                        relayStates[i] ? 'Allumé' : 'Éteint',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: relayStates[i]
+                            ? const Color(0xFF4ADE80)
+                            : const Color(0xFF6B8F6B))),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined,
+                    size: 16, color: Color(0xFF6B8F6B)),
+                  onPressed: () => _editRelay(i),
+                ),
+                Switch(
+                  value: relayStates[i],
+                  onChanged: connected ? (_) => toggleRelay(i) : null,
+                ),
+              ],
             ),
           )),
         ),

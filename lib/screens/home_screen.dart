@@ -28,12 +28,10 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // Pour l'instant les terrariums sont en dur
-  // Plus tard ils viendront de ton backend
   final List<Terrarium> terrariums = [
     Terrarium(
       id: 'terrarium_001',
-      name: 'Terrarium Victor',
+      name: 'Terrarium Théo',
       animal: 'Pogona',
       emoji: '🦎',
       temperature: 28.5,
@@ -43,33 +41,50 @@ class _HomeScreenState extends State<HomeScreen> {
   ];
 
   void _addTerrarium() {
-    // Dialog pour ajouter un boîtier
     showDialog(
       context: context,
       builder: (ctx) {
         final nameController = TextEditingController();
         final idController = TextEditingController();
         return AlertDialog(
-          title: const Text('Ajouter un boîtier'),
+          backgroundColor: const Color(0xFF242B24),
+          title: const Text('Ajouter un boîtier',
+            style: TextStyle(color: Color(0xFFE8F0E8))),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: nameController,
-                decoration: const InputDecoration(labelText: 'Nom (ex: Terrarium Victor)'),
+                style: const TextStyle(color: Color(0xFFE8F0E8)),
+                decoration: const InputDecoration(
+                  labelText: 'Nom du terrarium',
+                  labelStyle: TextStyle(color: Color(0xFF6B8F6B)),
+                  enabledBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: Color(0xFF2D3F2D))),
+                  focusedBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: Color(0xFF4ADE80))),
+                ),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: idController,
-                decoration: const InputDecoration(labelText: 'ID du boîtier (ex: terrarium_001)'),
+                style: const TextStyle(color: Color(0xFFE8F0E8)),
+                decoration: const InputDecoration(
+                  labelText: 'ID du boîtier (ex: terrarium_001)',
+                  labelStyle: TextStyle(color: Color(0xFF6B8F6B)),
+                  enabledBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: Color(0xFF2D3F2D))),
+                  focusedBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: Color(0xFF4ADE80))),
+                ),
               ),
             ],
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Annuler'),
-            ),
+              child: const Text('Annuler',
+                style: TextStyle(color: Color(0xFF6B8F6B)))),
             FilledButton(
               onPressed: () {
                 if (nameController.text.isNotEmpty && idController.text.isNotEmpty) {
@@ -84,8 +99,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Navigator.pop(ctx);
                 }
               },
-              child: const Text('Ajouter'),
-            ),
+              child: const Text('Ajouter')),
           ],
         );
       },
@@ -95,32 +109,58 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Mes terrariums'),
-        centerTitle: false,
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          ...terrariums.map((t) => _TerrariumCard(
-            terrarium: t,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => DashboardScreen(deviceId: t.id),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 8),
+              const Text('Bonjour 👋',
+                style: TextStyle(color: Color(0xFF6B8F6B), fontSize: 13)),
+              const SizedBox(height: 4),
+              const Text('Mes terrariums',
+                style: TextStyle(color: Color(0xFFE8F0E8),
+                  fontSize: 22, fontWeight: FontWeight.w500)),
+              const SizedBox(height: 20),
+              Expanded(
+                child: ListView(
+                  children: [
+                    ...terrariums.map((t) => _TerrariumCard(
+                      terrarium: t,
+                      onTap: () => Navigator.push(context,
+                        MaterialPageRoute(
+                          builder: (_) => DashboardScreen(deviceId: t.id, deviceName: t.name))),
+                    )),
+                    const SizedBox(height: 12),
+                    GestureDetector(
+                      onTap: _addTerrarium,
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: const Color(0xFF2D3F2D), width: 1.5,
+                            style: BorderStyle.solid),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text('+', style: TextStyle(
+                              color: Color(0xFF4ADE80), fontSize: 18)),
+                            SizedBox(width: 8),
+                            Text('Ajouter un boîtier',
+                              style: TextStyle(color: Color(0xFF6B8F6B), fontSize: 14)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          )),
-          const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: _addTerrarium,
-            icon: const Icon(Icons.add),
-            label: const Text('Ajouter un boîtier'),
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size(double.infinity, 52),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -129,49 +169,107 @@ class _HomeScreenState extends State<HomeScreen> {
 class _TerrariumCard extends StatelessWidget {
   final Terrarium terrarium;
   final VoidCallback onTap;
-
   const _TerrariumCard({required this.terrarium, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Text(terrarium.emoji, style: const TextStyle(fontSize: 36)),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(terrarium.name,
-                      style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 16)),
-                    Text(terrarium.animal,
-                      style: TextStyle(color: Colors.grey[600], fontSize: 13)),
-                    if (terrarium.temperature != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        '${terrarium.temperature}°C · ${terrarium.humidity?.toInt()}%',
-                        style: TextStyle(color: Colors.grey[500], fontSize: 12),
-                      ),
-                    ]
-                  ],
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF242B24),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 44, height: 44,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2D3F2D),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Center(
+                    child: Text(terrarium.emoji,
+                      style: const TextStyle(fontSize: 22))),
                 ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(terrarium.name,
+                        style: const TextStyle(
+                          color: Color(0xFFE8F0E8),
+                          fontWeight: FontWeight.w500, fontSize: 15)),
+                      Text(terrarium.animal,
+                        style: const TextStyle(
+                          color: Color(0xFF6B8F6B), fontSize: 12)),
+                    ],
+                  ),
+                ),
+                Container(
+                  width: 8, height: 8,
+                  decoration: BoxDecoration(
+                    color: terrarium.online
+                      ? const Color(0xFF4ADE80) : const Color(0xFF6B8F6B),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ],
+            ),
+            if (terrarium.temperature != null) ...[
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1A1F1A),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Column(
+                        children: [
+                          Text('${terrarium.temperature}°',
+                            style: const TextStyle(
+                              color: Color(0xFF4ADE80),
+                              fontSize: 18, fontWeight: FontWeight.w500)),
+                          const Text('Température',
+                            style: TextStyle(
+                              color: Color(0xFF6B8F6B), fontSize: 10)),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1A1F1A),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Column(
+                        children: [
+                          Text('${terrarium.humidity?.toInt()}%',
+                            style: const TextStyle(
+                              color: Color(0xFF60A5FA),
+                              fontSize: 18, fontWeight: FontWeight.w500)),
+                          const Text('Humidité',
+                            style: TextStyle(
+                              color: Color(0xFF6B8F6B), fontSize: 10)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              Icon(
-                Icons.circle,
-                size: 10,
-                color: terrarium.online ? Colors.green : Colors.grey,
-              ),
-              const SizedBox(width: 4),
-              const Icon(Icons.chevron_right, color: Colors.grey),
             ],
-          ),
+          ],
         ),
       ),
     );
