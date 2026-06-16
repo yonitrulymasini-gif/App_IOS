@@ -59,7 +59,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '477232001441',
     projectId: 'terrarium-app-26837',
     storageBucket: 'terrarium-app-26837.firebasestorage.app',
-    iosBundleId: 'com.example.terrariumApp',
+    iosBundleId: 'com.yoni.terrariumApp',
   );
   static const FirebaseOptions web = FirebaseOptions(
     apiKey: 'AIzaSyBtlVuXmH3jGFN5okFI5N8iQQmDQTQYnKU',

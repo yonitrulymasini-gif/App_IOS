@@ -1,4 +1,4 @@
-package com.example.terrarium_app
+package com.yoni.terrarium_app
 
 import io.flutter.embedding.android.FlutterActivity
 
