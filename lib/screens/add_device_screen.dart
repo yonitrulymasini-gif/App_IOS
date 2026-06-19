@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'app_theme.dart';
 
 class AddDeviceScreen extends StatefulWidget {
   final Function(String id, String name, String emoji, String animal) onDeviceAdded;
@@ -9,261 +10,166 @@ class AddDeviceScreen extends StatefulWidget {
 }
 
 class _AddDeviceScreenState extends State<AddDeviceScreen> {
-  bool _scanned = false;
+  final _name   = TextEditingController();
+  final _idCtrl = TextEditingController();
+  final _scanner = MobileScannerController();
   bool _scanning = true;
+  bool _scanned  = false;
   String? _scannedId;
-  final _nameController = TextEditingController();
-  final _emojiController = TextEditingController(text: '🦎');
-  final MobileScannerController _scannerController = MobileScannerController();
+  String _emoji  = '🦎';
+  String _animal = 'Animal';
 
-  final List<String> _animalEmojis = [
-    '🦎', '🐍', '🐢', '🦕', '🦖', '🐊', '🦜', '🐸', '🦋', '🌿'
+  static const _animals = [
+    ('🦎', 'Agame'), ('🐍', 'Serpent'), ('🐢', 'Tortue'),
+    ('🦖', 'Gecko'), ('🐊', 'Caïman'), ('🐸', 'Grenouille'),
+    ('🦋', 'Insecte'), ('🌿', 'Plante'),
   ];
-  String _selectedEmoji = '🦎';
-  String _selectedAnimal = 'Animal';
 
-  void _onQRDetected(BarcodeCapture capture) {
+  @override
+  void dispose() { _scanner.dispose(); _name.dispose(); _idCtrl.dispose(); super.dispose(); }
+
+  void _onDetect(BarcodeCapture c) {
     if (_scanned) return;
-    final barcode = capture.barcodes.firstOrNull;
-    if (barcode?.rawValue == null) return;
-
-    final value = barcode!.rawValue!;
-    // Le QR code doit contenir "terrarium:terrarium_001" par exemple
-    if (value.startsWith('terrarium:')) {
-      final id = value.replaceFirst('terrarium:', '');
-      setState(() {
-        _scanned = true;
-        _scanning = false;
-        _scannedId = id;
-      });
-      _scannerController.stop();
+    final val = c.barcodes.firstOrNull?.rawValue ?? '';
+    if (val.startsWith('terrarium:')) {
+      final id = val.replaceFirst('terrarium:', '');
+      _scanner.stop();
+      setState(() { _scanned = true; _scanning = false; _scannedId = id; });
     }
   }
 
-  void _addManually() {
-    setState(() {
-      _scanning = false;
-      _scanned = true;
-      _scannedId = null; // on laissera l'utilisateur taper l'ID
-    });
-    _scannerController.stop();
-  }
-
-  @override
-  void dispose() {
-    _scannerController.dispose();
-    _nameController.dispose();
-    super.dispose();
+  void _submit() {
+    final id = _scannedId ?? _idCtrl.text.trim();
+    final nm = _name.text.trim();
+    if (id.isEmpty || nm.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('ID et nom requis')));
+      return;
+    }
+    widget.onDeviceAdded(id, nm, _emoji, _animal);
+    Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1F1A),
       appBar: AppBar(
         title: const Text('Ajouter un boîtier'),
-        backgroundColor: const Color(0xFF1A1F1A),
+        actions: _scanning
+            ? [TextButton(
+                onPressed: () { _scanner.stop(); setState(() { _scanning = false; _scanned = true; }); },
+                child: Text('Manuel', style: T.t14.copyWith(color: T.green)),
+              )]
+            : null,
       ),
       body: _scanning ? _buildScanner() : _buildForm(),
     );
   }
 
-  Widget _buildScanner() {
-    return Column(
-      children: [
-        Expanded(
-          flex: 3,
-          child: Stack(
-            children: [
-              MobileScanner(
-                controller: _scannerController,
-                onDetect: _onQRDetected,
-              ),
-              // Overlay avec viseur
-              Center(
-                child: Container(
-                  width: 220, height: 220,
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: const Color(0xFF4ADE80), width: 2),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Stack(
-                    children: [
-                      // Coins du viseur
-                      Positioned(top: 0, left: 0, child: _corner()),
-                      Positioned(top: 0, right: 0,
-                        child: Transform.flip(flipX: true, child: _corner())),
-                      Positioned(bottom: 0, left: 0,
-                        child: Transform.flip(flipY: true, child: _corner())),
-                      Positioned(bottom: 0, right: 0,
-                        child: Transform.flip(flipX: true,
-                          child: Transform.flip(flipY: true, child: _corner()))),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+  Widget _buildScanner() => Stack(children: [
+    MobileScanner(controller: _scanner, onDetect: _onDetect),
+    Center(child: Container(
+      width: 200, height: 200,
+      decoration: BoxDecoration(
+        border: Border.all(color: T.green, width: 2),
+        borderRadius: BorderRadius.circular(12),
+      ),
+    )),
+    Positioned(bottom: 48, left: 0, right: 0,
+      child: Text('Scanne le QR code du boîtier',
+          textAlign: TextAlign.center, style: T.t14.copyWith(color: T.textPrimary))),
+  ]);
+
+  Widget _buildForm() => ListView(
+    padding: const EdgeInsets.all(20),
+    children: [
+      // ID scanné
+      if (_scannedId != null) ...[
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: T.green.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: T.green.withValues(alpha: 0.3)),
           ),
+          child: Row(children: [
+            const Icon(Icons.check_circle_outline, color: T.green, size: 16),
+            const SizedBox(width: 8),
+            Expanded(child: Text(_scannedId!, style: T.t13.copyWith(color: T.green))),
+          ]),
         ),
-        Expanded(
-          flex: 1,
-          child: Container(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text('Scanne le QR code collé sur ton boîtier',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Color(0xFFE8F0E8), fontSize: 15)),
-                const SizedBox(height: 16),
-                TextButton(
-                  onPressed: _addManually,
-                  child: const Text('Entrer l\'ID manuellement',
-                    style: TextStyle(color: Color(0xFF6B8F6B))),
-                ),
-              ],
-            ),
-          ),
-        ),
+        const SizedBox(height: 20),
       ],
-    );
-  }
 
-  Widget _corner() {
-    return Container(
-      width: 20, height: 20,
-      decoration: const BoxDecoration(
-        border: Border(
-          top: BorderSide(color: Color(0xFF4ADE80), width: 3),
-          left: BorderSide(color: Color(0xFF4ADE80), width: 3),
+      // ID manuel
+      if (_scannedId == null) ...[
+        _Label('ID du boîtier'),
+        const SizedBox(height: 6),
+        TextField(
+          controller: _idCtrl,
+          style: const TextStyle(color: T.textPrimary, fontSize: 15),
+          decoration: const InputDecoration(hintText: 'terrarium_001'),
         ),
-        borderRadius: BorderRadius.only(topLeft: Radius.circular(4)),
-      ),
-    );
-  }
+        const SizedBox(height: 20),
+      ],
 
-  Widget _buildForm() {
-    final idController = TextEditingController(text: _scannedId ?? '');
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Succès du scan
-          if (_scannedId != null) ...[
-            Container(
-              padding: const EdgeInsets.all(16),
+      // Nom
+      _Label('Nom'),
+      const SizedBox(height: 6),
+      TextField(
+        controller: _name,
+        style: const TextStyle(color: T.textPrimary, fontSize: 15),
+        decoration: const InputDecoration(hintText: 'Ex: Terrarium Victor'),
+      ),
+      const SizedBox(height: 24),
+
+      // Animal
+      _Label('Animal'),
+      const SizedBox(height: 10),
+      Wrap(
+        spacing: 8, runSpacing: 8,
+        children: _animals.map((a) {
+          final (ico, lbl) = a;
+          final sel = _emoji == ico;
+          return GestureDetector(
+            onTap: () => setState(() { _emoji = ico; _animal = lbl; }),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: const Color(0xFF242B24),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFF4ADE80), width: 1),
+                color: sel ? T.green.withValues(alpha: 0.12) : T.elevated,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: sel ? T.green : Colors.transparent),
               ),
-              child: Row(
-                children: [
-                  const Icon(Icons.check_circle,
-                    color: Color(0xFF4ADE80), size: 20),
-                  const SizedBox(width: 10),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Boîtier détecté !',
-                        style: TextStyle(color: Color(0xFF4ADE80),
-                          fontWeight: FontWeight.w500)),
-                      Text(_scannedId!,
-                        style: const TextStyle(color: Color(0xFF6B8F6B),
-                          fontSize: 12)),
-                    ],
-                  ),
-                ],
-              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Text(ico, style: const TextStyle(fontSize: 16)),
+                const SizedBox(width: 6),
+                Text(lbl, style: T.t13.copyWith(
+                    color: sel ? T.green : T.textSecondary,
+                    fontWeight: sel ? FontWeight.w600 : FontWeight.normal)),
+              ]),
             ),
-            const SizedBox(height: 24),
-          ],
-
-          // ID manuel si pas de scan
-          if (_scannedId == null) ...[
-            const Text('ID du boîtier',
-              style: TextStyle(color: Color(0xFF6B8F6B), fontSize: 13)),
-            const SizedBox(height: 8),
-            TextField(
-              controller: idController,
-              style: const TextStyle(color: Color(0xFFE8F0E8)),
-              decoration: const InputDecoration(
-                hintText: 'ex: terrarium_001',
-                hintStyle: TextStyle(color: Color(0xFF2D3F2D)),
-                enabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Color(0xFF2D3F2D))),
-                focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Color(0xFF4ADE80))),
-              ),
-            ),
-            const SizedBox(height: 24),
-          ],
-
-          // Nom du terrarium
-          const Text('Nom du terrarium',
-            style: TextStyle(color: Color(0xFF6B8F6B), fontSize: 13)),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _nameController,
-            style: const TextStyle(color: Color(0xFFE8F0E8)),
-            decoration: const InputDecoration(
-              hintText: 'ex: Terrarium Victor',
-              hintStyle: TextStyle(color: Color(0xFF2D3F2D)),
-              enabledBorder: OutlineInputBorder(
-                borderSide: BorderSide(color: Color(0xFF2D3F2D))),
-              focusedBorder: OutlineInputBorder(
-                borderSide: BorderSide(color: Color(0xFF4ADE80))),
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // Choix de l'emoji
-          const Text('Animal',
-            style: TextStyle(color: Color(0xFF6B8F6B), fontSize: 13)),
-          const SizedBox(height: 8),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: _animalEmojis.map((emoji) => GestureDetector(
-                onTap: () => setState(() { _selectedEmoji = emoji; _selectedAnimal = emoji; }),
-                child: Container(
-                  margin: const EdgeInsets.only(right: 8),
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: _selectedEmoji == emoji
-                      ? const Color(0xFF2D3F2D) : const Color(0xFF242B24),
-                    border: Border.all(
-                      color: _selectedEmoji == emoji
-                        ? const Color(0xFF4ADE80) : const Color(0xFF2D3F2D)),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(emoji, style: const TextStyle(fontSize: 24)),
-                ),
-              )).toList(),
-            ),
-          ),
-          const SizedBox(height: 32),
-
-          FilledButton(
-            onPressed: () {
-              final id = _scannedId ?? idController.text.trim();
-              final name = _nameController.text.trim();
-              if (id.isEmpty || name.isEmpty) return;
-              widget.onDeviceAdded(id, name, _selectedEmoji, _selectedAnimal);
-              Navigator.pop(context);
-            },
-            style: FilledButton.styleFrom(
-              minimumSize: const Size(double.infinity, 52),
-              backgroundColor: const Color(0xFF4ADE80),
-              foregroundColor: const Color(0xFF1A1F1A),
-            ),
-            child: const Text('Ajouter le boîtier',
-              style: TextStyle(fontWeight: FontWeight.w600)),
-          ),
-        ],
+          );
+        }).toList(),
       ),
-    );
-  }
+      const SizedBox(height: 32),
+
+      FilledButton(
+        onPressed: _submit,
+        style: FilledButton.styleFrom(
+          backgroundColor: T.green, foregroundColor: T.bg,
+          minimumSize: const Size(double.infinity, 48),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+        child: const Text('Ajouter', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+      ),
+    ],
+  );
+}
+
+class _Label extends StatelessWidget {
+  final String text;
+  const _Label(this.text);
+  @override
+  Widget build(BuildContext context) =>
+      Text(text, style: T.t12.copyWith(color: T.textSecondary, letterSpacing: 0.3));
 }

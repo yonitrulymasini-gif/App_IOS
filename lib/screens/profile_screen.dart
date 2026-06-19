@@ -1,113 +1,62 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'app_theme.dart';
 import 'auth_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
-
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final _user = FirebaseAuth.instance.currentUser;
-
-  bool _notificationsEnabled = true;
-  bool _mqttAutoConnect = true;
-  String _mqttBroker = 'broker.hivemq.com';
+  bool _notifs = true;
+  bool _autoConnect = true;
+  String _broker = 'broker.hivemq.com';
 
   Future<void> _signOut() async {
-    final confirm = await showDialog<bool>(
+    final ok = await showCupertinoDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF242B24),
-        title: const Text('Déconnexion',
-            style: TextStyle(color: Color(0xFFE8F0E8))),
-        content: const Text('Tu seras redirigé vers l\'écran de connexion.',
-            style: TextStyle(color: Color(0xFF6B8F6B))),
+      builder: (_) => CupertinoAlertDialog(
+        title: const Text('Se déconnecter ?'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Annuler',
-                style: TextStyle(color: Color(0xFF6B8F6B))),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Se déconnecter',
-                style: TextStyle(color: Colors.redAccent)),
-          ),
+          CupertinoDialogAction(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
+          CupertinoDialogAction(isDestructiveAction: true, onPressed: () => Navigator.pop(context, true), child: const Text('Déconnexion')),
         ],
       ),
     );
-    if (confirm == true) {
+    if (ok == true) {
       await FirebaseAuth.instance.signOut();
-      if (mounted) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => const AuthScreen()),
-          (_) => false,
-        );
-      }
+      if (mounted) Navigator.pushAndRemoveUntil(context,
+        MaterialPageRoute(builder: (_) => const AuthScreen()), (_) => false);
     }
   }
 
-  Future<void> _changePassword() async {
+  Future<void> _resetPassword() async {
     if (_user?.email == null) return;
-    try {
-      await FirebaseAuth.instance
-          .sendPasswordResetEmail(email: _user!.email!);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Email de réinitialisation envoyé ✓'),
-            backgroundColor: Color(0xFF2D3F2D),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur : $e')),
-        );
-      }
-    }
+    await FirebaseAuth.instance.sendPasswordResetEmail(email: _user!.email!);
+    if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Email envoyé')));
   }
 
-  void _editMqttBroker() {
-    final ctrl = TextEditingController(text: _mqttBroker);
-    showDialog(
+  void _editBroker() {
+    final ctrl = TextEditingController(text: _broker);
+    showCupertinoDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF242B24),
-        title: const Text('Broker MQTT',
-            style: TextStyle(color: Color(0xFFE8F0E8))),
-        content: TextField(
-          controller: ctrl,
-          style: const TextStyle(color: Color(0xFFE8F0E8)),
-          decoration: const InputDecoration(
-            hintText: 'broker.hivemq.com',
-            hintStyle: TextStyle(color: Color(0xFF2D3F2D)),
-            enabledBorder: OutlineInputBorder(
-                borderSide: BorderSide(color: Color(0xFF2D3F2D))),
-            focusedBorder: OutlineInputBorder(
-                borderSide: BorderSide(color: Color(0xFF4ADE80))),
-          ),
+      builder: (_) => CupertinoAlertDialog(
+        title: const Text('Broker MQTT'),
+        content: Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: CupertinoTextField(controller: ctrl, placeholder: 'broker.hivemq.com'),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Annuler',
-                style: TextStyle(color: Color(0xFF6B8F6B))),
-          ),
-          FilledButton(
-            onPressed: () {
-              setState(() => _mqttBroker = ctrl.text.trim());
-              Navigator.pop(ctx);
-            },
-            style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF4ADE80),
-                foregroundColor: const Color(0xFF1A1F1A)),
-            child: const Text('Sauvegarder'),
+          CupertinoDialogAction(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
+          CupertinoDialogAction(
+            isDefaultAction: true,
+            onPressed: () { setState(() => _broker = ctrl.text.trim()); Navigator.pop(context); },
+            child: const Text('OK'),
           ),
         ],
       ),
@@ -116,247 +65,131 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final email = _user?.email ?? 'Non connecté';
-    final initiale = email.isNotEmpty ? email[0].toUpperCase() : '?';
+    final email = _user?.email ?? 'Invité';
+    final initial = email[0].toUpperCase();
 
     return Scaffold(
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 8),
-              const Text(
-                'Profil',
-                style: TextStyle(
-                  color: Color(0xFFE8F0E8),
-                  fontSize: 22,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // ── Avatar + email ──────────────────────────────────────
-              Center(
-                child: Column(
-                  children: [
-                    Container(
-                      width: 72,
-                      height: 72,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF2D3F2D),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                            color: const Color(0xFF4ADE80), width: 2),
-                      ),
-                      child: Center(
-                        child: Text(
-                          initiale,
-                          style: const TextStyle(
-                              color: Color(0xFF4ADE80),
-                              fontSize: 28,
-                              fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      email,
-                      style: const TextStyle(
-                          color: Color(0xFFE8F0E8), fontSize: 15),
-                    ),
-                    const SizedBox(height: 4),
-                    const Text('Compte Firebase',
-                        style: TextStyle(
-                            color: Color(0xFF6B8F6B), fontSize: 12)),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 28),
-
-              // ── Section Notifications ───────────────────────────────
-              _SectionTitle('Notifications'),
-              _SettingToggle(
-                icon: '🔔',
-                label: 'Alertes capteurs',
-                subtitle: 'Température et humidité hors limites',
-                value: _notificationsEnabled,
-                onChanged: (v) =>
-                    setState(() => _notificationsEnabled = v),
-              ),
-              const SizedBox(height: 16),
-
-              // ── Section MQTT ────────────────────────────────────────
-              _SectionTitle('Connexion MQTT'),
-              _SettingToggle(
-                icon: '🔄',
-                label: 'Auto-connexion',
-                subtitle: 'Reconnexion automatique au démarrage',
-                value: _mqttAutoConnect,
-                onChanged: (v) =>
-                    setState(() => _mqttAutoConnect = v),
-              ),
-              const SizedBox(height: 8),
-              _SettingTap(
-                icon: '🌐',
-                label: 'Broker MQTT',
-                value: _mqttBroker,
-                onTap: _editMqttBroker,
-              ),
-              const SizedBox(height: 16),
-
-              // ── Section Compte ──────────────────────────────────────
-              _SectionTitle('Compte'),
-              _SettingTap(
-                icon: '🔑',
-                label: 'Changer le mot de passe',
-                value: 'Par email',
-                onTap: _changePassword,
-              ),
-              const SizedBox(height: 8),
-              _SettingTap(
-                icon: 'ℹ️',
-                label: 'Version',
-                value: '1.0.1',
-                onTap: null,
-              ),
-              const SizedBox(height: 28),
-
-              // ── Bouton déconnexion ──────────────────────────────────
-              OutlinedButton.icon(
-                onPressed: _signOut,
-                icon: const Icon(Icons.logout, size: 18),
-                label: const Text('Se déconnecter'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.redAccent,
-                  side: const BorderSide(color: Colors.redAccent),
-                  minimumSize: const Size(double.infinity, 48),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-              const SizedBox(height: 24),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Widgets helpers ──────────────────────────────────────────────────────────
-class _SectionTitle extends StatelessWidget {
-  final String title;
-  const _SectionTitle(this.title);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Text(
-        title.toUpperCase(),
-        style: const TextStyle(
-            color: Color(0xFF6B8F6B),
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 1.2),
-      ),
-    );
-  }
-}
-
-class _SettingToggle extends StatelessWidget {
-  final String icon;
-  final String label;
-  final String subtitle;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  const _SettingToggle({
-    required this.icon,
-    required this.label,
-    required this.subtitle,
-    required this.value,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF242B24),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        children: [
-          Text(icon, style: const TextStyle(fontSize: 18)),
-          const SizedBox(width: 12),
-          Expanded(
+      body: CustomScrollView(
+        slivers: [
+          const SliverAppBar(pinned: true, title: Text('Profil'), backgroundColor: T.bg, surfaceTintColor: Colors.transparent),
+          SliverToBoxAdapter(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label,
-                    style: const TextStyle(
-                        color: Color(0xFFE8F0E8), fontSize: 14)),
-                Text(subtitle,
-                    style: const TextStyle(
-                        color: Color(0xFF6B8F6B), fontSize: 11)),
+                // ── Avatar ──────────────────────────────────────────────
+                const SizedBox(height: 24),
+                Container(
+                  width: 56, height: 56,
+                  decoration: BoxDecoration(
+                    color: T.green.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(child: Text(initial,
+                      style: T.t22.copyWith(color: T.green, fontSize: 22))),
+                ),
+                const SizedBox(height: 10),
+                Text(email, style: T.t15.copyWith(color: T.textPrimary)),
+                const SizedBox(height: 4),
+                Text(_user?.isAnonymous == true ? 'Compte invité' : 'Compte Firebase',
+                    style: T.t13.copyWith(color: T.textSecondary)),
+                const SizedBox(height: 32),
+
+                // ── Section Notifications ────────────────────────────────
+                _SectionHeader('NOTIFICATIONS'),
+                _ToggleRow(label: 'Alertes capteurs', value: _notifs,
+                    onChanged: (v) => setState(() => _notifs = v)),
+                const Divider(height: 0, indent: 16),
+
+                // ── Section Connexion ────────────────────────────────────
+                const SizedBox(height: 24),
+                _SectionHeader('CONNEXION MQTT'),
+                _ToggleRow(label: 'Auto-connexion', value: _autoConnect,
+                    onChanged: (v) => setState(() => _autoConnect = v)),
+                const Divider(height: 0, indent: 16),
+                _TapRow(label: 'Broker', value: _broker, onTap: _editBroker),
+
+                // ── Section Compte ───────────────────────────────────────
+                const SizedBox(height: 24),
+                _SectionHeader('COMPTE'),
+                _TapRow(label: 'Changer le mot de passe', onTap: _resetPassword),
+                const Divider(height: 0, indent: 16),
+                _TapRow(label: 'Version', value: '1.0.1', onTap: null),
+
+                // ── Déconnexion ──────────────────────────────────────────
+                const SizedBox(height: 32),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: GestureDetector(
+                    onTap: _signOut,
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      decoration: BoxDecoration(
+                        color: T.red.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text('Se déconnecter',
+                          textAlign: TextAlign.center,
+                          style: T.t15.copyWith(color: T.red, fontWeight: FontWeight.w500)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 48),
               ],
             ),
           ),
-          Switch(value: value, onChanged: onChanged),
         ],
       ),
     );
   }
 }
 
-class _SettingTap extends StatelessWidget {
-  final String icon;
+class _SectionHeader extends StatelessWidget {
   final String label;
-  final String value;
-  final VoidCallback? onTap;
-
-  const _SettingTap({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.onTap,
-  });
-
+  const _SectionHeader(this.label);
   @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-        decoration: BoxDecoration(
-          color: const Color(0xFF242B24),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Row(
-          children: [
-            Text(icon, style: const TextStyle(fontSize: 18)),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(label,
-                  style: const TextStyle(
-                      color: Color(0xFFE8F0E8), fontSize: 14)),
-            ),
-            Text(value,
-                style: const TextStyle(
-                    color: Color(0xFF6B8F6B), fontSize: 13)),
-            if (onTap != null) ...[
-              const SizedBox(width: 6),
-              const Icon(Icons.chevron_right,
-                  color: Color(0xFF6B8F6B), size: 16),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+    child: Align(
+      alignment: Alignment.centerLeft,
+      child: Text(label, style: T.t12.copyWith(color: T.textSecondary, letterSpacing: 0.5)),
+    ),
+  );
+}
+
+class _ToggleRow extends StatelessWidget {
+  final String label;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+  const _ToggleRow({required this.label, required this.value, required this.onChanged});
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+    child: Row(children: [
+      Expanded(child: Text(label, style: T.t15.copyWith(color: T.textPrimary))),
+      CupertinoSwitch(value: value, onChanged: onChanged, activeTrackColor: T.green),
+    ]),
+  );
+}
+
+class _TapRow extends StatelessWidget {
+  final String label;
+  final String? value;
+  final VoidCallback? onTap;
+  const _TapRow({required this.label, this.value, required this.onTap});
+  @override
+  Widget build(BuildContext context) => InkWell(
+    onTap: onTap,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(children: [
+        Expanded(child: Text(label, style: T.t15.copyWith(color: T.textPrimary))),
+        if (value != null)
+          Text(value!, style: T.t15.copyWith(color: T.textSecondary)),
+        if (onTap != null) ...[
+          const SizedBox(width: 4),
+          const Icon(Icons.chevron_right, color: T.textTertiary, size: 16),
+        ],
+      ]),
+    ),
+  );
 }
