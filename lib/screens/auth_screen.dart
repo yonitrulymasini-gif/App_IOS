@@ -75,7 +75,7 @@ class _AuthScreenState extends State<AuthScreen> {
               idToken: cred.identityToken, accessToken: cred.authorizationCode));
       _goHome();
     } on SignInWithAppleAuthorizationException catch (e) {
-      if (e.code != AuthorizationErrorCode.canceled) setState(() => _error = 'Erreur Apple.');
+      if (e.code != AuthorizationErrorCode.canceled) { setState(() => _error = 'Erreur Apple.'); }
     } finally { _setLoading(null); }
   }
 
@@ -132,7 +132,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         Image.network(
                           'https://www.google.com/favicon.ico',
                           width: 20, height: 20,
-                          errorBuilder: (_, __, ___) => const Icon(Icons.g_mobiledata, size: 24, color: Colors.white),
+                          errorBuilder: (context, error, stack) => const Icon(Icons.g_mobiledata, size: 24, color: Colors.white),
                         ),
                         const SizedBox(width: 10),
                         Text('Continuer avec Google', style: T.t16.copyWith(color: T.textPrimary, fontWeight: FontWeight.w500)),

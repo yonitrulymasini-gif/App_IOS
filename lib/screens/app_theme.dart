@@ -15,6 +15,11 @@ abstract class T {
   static const textSecondary = Color(0xFF6B8A72);
   static const textTertiary  = Color(0xFF3A5040);
 
+  // Aliases for backward compat
+  static const elevated = card2;
+  static const amber    = gold;
+  static const blue     = Color(0xFF5B9CF6);
+
   // Accents
   static const green      = Color(0xFF3DD68C);
   static const greenBtn   = Color(0xFF8DC97A);
@@ -33,6 +38,7 @@ abstract class T {
   static const t15 = TextStyle(fontSize: 15, height: 1.5);
   static const t16 = TextStyle(fontSize: 16, height: 1.4);
   static const t17 = TextStyle(fontSize: 17, height: 1.3, fontWeight: FontWeight.w600);
+  static const t22 = TextStyle(fontSize: 22, height: 1.2, fontWeight: FontWeight.w600, letterSpacing: -0.5);
 
   static ThemeData theme() => ThemeData(
     brightness: Brightness.dark,

@@ -6,7 +6,8 @@ class _Post {
   int likes; final int comments; final DateTime at; bool liked;
   _Post({required this.id, required this.author, required this.initial,
     required this.body, required this.likes, required this.comments,
-    required this.at, this.liked = false});
+    required this.at, // ignore: unused_element
+    this.liked = false});
 }
 
 class CommunityScreen extends StatefulWidget {

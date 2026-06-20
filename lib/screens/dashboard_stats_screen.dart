@@ -14,6 +14,7 @@ class DashboardStatsScreen extends StatefulWidget {
 }
 
 class _State extends State<DashboardStatsScreen> {
+  // ignore: unused_field
   List<Map<String, dynamic>> _terrariums = [];
   bool _loading = true;
   List<_Point> _temp = [], _humid = [];
