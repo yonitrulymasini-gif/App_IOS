@@ -138,6 +138,17 @@ class _AuthScreenState extends State<AuthScreen> {
                         Text('Continuer avec Google', style: T.t16.copyWith(color: T.textPrimary, fontWeight: FontWeight.w500)),
                       ]),
                     ),
+                    const SizedBox(height: 10),
+                    // Apple
+                    _SocialBtn(
+                      onTap: _loading != null ? null : _apple,
+                      loading: _loading == 'apple',
+                      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                        const Icon(Icons.apple, color: T.textPrimary, size: 22),
+                        const SizedBox(width: 10),
+                        Text('Continuer avec Apple', style: T.t16.copyWith(color: T.textPrimary, fontWeight: FontWeight.w500)),
+                      ]),
+                    ),
                     const SizedBox(height: 24),
 
                     // Divider
