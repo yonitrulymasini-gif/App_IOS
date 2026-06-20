@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'app_theme.dart';
 import 'home_screen.dart';
 import 'dashboard_stats_screen.dart';
-import 'scenarios_overview_screen.dart';
 import 'community_screen.dart';
+import 'scenarios_overview_screen.dart';
 import 'profile_screen.dart';
 
 class MainShell extends StatefulWidget {
@@ -18,8 +18,8 @@ class _MainShellState extends State<MainShell> {
   static const _pages = [
     HomeScreen(),
     DashboardStatsScreen(),
-    ScenariosOverviewScreen(),
     CommunityScreen(),
+    ScenariosOverviewScreen(),
     ProfileScreen(),
   ];
 
@@ -27,72 +27,70 @@ class _MainShellState extends State<MainShell> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: IndexedStack(index: _i, children: _pages),
-      bottomNavigationBar: _NavBar(current: _i, onTap: (i) => setState(() => _i = i)),
+      bottomNavigationBar: _TerraNav(current: _i, onTap: (i) => setState(() => _i = i)),
     );
   }
 }
 
-class _NavBar extends StatelessWidget {
+class _TerraNav extends StatelessWidget {
   final int current;
   final ValueChanged<int> onTap;
-  const _NavBar({required this.current, required this.onTap});
+  const _TerraNav({required this.current, required this.onTap});
 
-  static const _tabs = [
-    (icon: Icons.home_outlined,       iconSel: Icons.home_rounded,           label: 'Accueil'),
-    (icon: Icons.bar_chart_outlined,  iconSel: Icons.bar_chart_rounded,      label: 'Dashboard'),
-    (icon: Icons.bolt_outlined,       iconSel: Icons.bolt_rounded,           label: 'Scénarios'),
-    (icon: Icons.people_outline,      iconSel: Icons.people_rounded,         label: 'Communauté'),
-    (icon: Icons.person_outline,      iconSel: Icons.person_rounded,         label: 'Profil'),
+  static const _items = [
+    (icon: Icons.home_outlined,      label: 'Accueil'),
+    (icon: Icons.monitor_heart_outlined, label: 'Mesures'),
+    (icon: Icons.people_outline,     label: 'Communauté'),
+    (icon: Icons.auto_awesome_outlined, label: 'Scénarios'),
+    (icon: Icons.person_outline,     label: 'Profil'),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        color: T.surface,
-        border: Border(top: BorderSide(color: T.border, width: 0.5)),
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 20),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xEA0A1A0F),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: T.border),
       ),
-      child: SafeArea(
-        top: false,
-        child: SizedBox(
-          height: 52,
-          child: Row(
-            children: List.generate(_tabs.length, (i) {
-              final sel = current == i;
-              final tab = _tabs[i];
-              return Expanded(
-                child: GestureDetector(
-                  onTap: () => onTap(i),
-                  behavior: HitTestBehavior.opaque,
-                  child: AnimatedOpacity(
-                    duration: const Duration(milliseconds: 150),
-                    opacity: sel ? 1.0 : 0.45,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          sel ? tab.iconSel : tab.icon,
-                          size: 22,
+      child: Row(
+        children: List.generate(_items.length, (i) {
+          final sel = current == i;
+          final item = _items[i];
+          return Expanded(
+            child: GestureDetector(
+              onTap: () => onTap(i),
+              behavior: HitTestBehavior.opaque,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: EdgeInsets.symmetric(
+                    vertical: 6, horizontal: sel ? 12 : 0),
+                decoration: BoxDecoration(
+                  color: sel ? T.card2 : Colors.transparent,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(item.icon,
+                        size: 22,
+                        color: sel ? T.green : T.textSecondary),
+                    const SizedBox(height: 3),
+                    Text(item.label,
+                        style: TextStyle(
+                          fontSize: 9.5,
+                          fontWeight: sel ? FontWeight.w600 : FontWeight.normal,
                           color: sel ? T.green : T.textSecondary,
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          tab.label,
-                          style: TextStyle(
-                            fontSize: 9.5,
-                            fontWeight: sel ? FontWeight.w600 : FontWeight.w400,
-                            color: sel ? T.green : T.textSecondary,
-                            letterSpacing: -0.1,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                        overflow: TextOverflow.ellipsis),
+                  ],
                 ),
-              );
-            }),
-          ),
-        ),
+              ),
+            ),
+          );
+        }),
       ),
     );
   }

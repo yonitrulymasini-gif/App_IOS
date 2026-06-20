@@ -8,31 +8,19 @@ import 'add_device_screen.dart';
 
 class Terrarium {
   final String id;
-  String name;
-  String animal;
-  String emoji;
-  double? temperature;
-  double? humidity;
+  String name, animal, emoji;
+  double? temperature, humidity;
   bool online;
 
-  Terrarium({
-    required this.id,
-    required this.name,
-    required this.animal,
-    required this.emoji,
-    this.temperature,
-    this.humidity,
-    this.online = false,
-  });
+  Terrarium({required this.id, required this.name, required this.animal,
+    required this.emoji, this.temperature, this.humidity, this.online = false});
 
-  Map<String, dynamic> toJson() => {
-    'id': id, 'name': name, 'animal': animal, 'emoji': emoji,
-    'temperature': temperature, 'humidity': humidity, 'online': online,
-  };
+  Map<String, dynamic> toJson() => {'id': id, 'name': name, 'animal': animal,
+    'emoji': emoji, 'temperature': temperature, 'humidity': humidity, 'online': online};
 
   factory Terrarium.fromJson(Map<String, dynamic> j) => Terrarium(
-    id: j['id'], name: j['name'],
-    animal: j['animal'] ?? 'Animal', emoji: j['emoji'] ?? '🦎',
+    id: j['id'], name: j['name'], animal: j['animal'] ?? 'Animal',
+    emoji: j['emoji'] ?? '🦎',
     temperature: j['temperature']?.toDouble(),
     humidity: j['humidity']?.toDouble(),
     online: j['online'] ?? false,
@@ -50,180 +38,141 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _loaded = false;
 
   @override
-  void initState() {
-    super.initState();
-    _load();
-  }
+  void initState() { super.initState(); _load(); }
 
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getStringList('terrariums') ?? [];
-    var list = raw.map((e) => Terrarium.fromJson(jsonDecode(e))).toList();
-    if (list.isEmpty) {
-      list = [
-        Terrarium(id: 'terrarium_001', name: 'Terrarium Théo',
-            animal: 'Pogona', emoji: '🦎',
-            temperature: 28.5, humidity: 65, online: true),
-      ];
-      await _save(list);
-    }
-    setState(() { _items = list; _loaded = true; });
+    setState(() {
+      _items = raw.map((e) => Terrarium.fromJson(jsonDecode(e))).toList();
+      _loaded = true;
+    });
   }
 
-  Future<void> _save(List<Terrarium> list) async {
+  Future<void> _save() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList('terrariums', list.map((t) => jsonEncode(t.toJson())).toList());
+    await prefs.setStringList('terrariums', _items.map((t) => jsonEncode(t.toJson())).toList());
   }
 
   void _add() => Navigator.push(context, MaterialPageRoute(
     builder: (_) => AddDeviceScreen(
       onDeviceAdded: (id, name, emoji, animal) {
         setState(() => _items.add(Terrarium(id: id, name: name, animal: animal, emoji: emoji)));
-        _save(_items);
+        _save();
       },
     ),
   ));
 
   Future<void> _delete(int index) async {
-    final t = _items[index];
     final ok = await showCupertinoDialog<bool>(
       context: context,
       builder: (_) => CupertinoAlertDialog(
-        title: const Text('Supprimer ?'),
-        content: Text('Supprimer "${t.name}" ?'),
+        title: Text('Supprimer "${_items[index].name}" ?'),
         actions: [
           CupertinoDialogAction(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
           CupertinoDialogAction(isDestructiveAction: true, onPressed: () => Navigator.pop(context, true), child: const Text('Supprimer')),
         ],
       ),
     );
-    if (ok == true) {
-      setState(() => _items.removeAt(index));
-      _save(_items);
-    }
+    if (ok == true) { setState(() => _items.removeAt(index)); _save(); }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            pinned: true,
-            backgroundColor: T.bg,
-            surfaceTintColor: Colors.transparent,
-            title: const Text('Mes terrariums'),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.add, color: T.green, size: 24),
-                onPressed: _add,
-              ),
-            ],
-          ),
-          if (!_loaded)
-            const SliverFillRemaining(
-              child: Center(child: CupertinoActivityIndicator()),
-            )
-          else if (_items.isEmpty)
-            SliverFillRemaining(child: _Empty(onAdd: _add))
-          else
-            SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (ctx, i) {
-                  if (i == _items.length) {
-                    return Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-                      child: _AddRow(onTap: _add),
-                    );
-                  }
-                  return _Row(
-                    item: _items[i],
-                    onTap: () => Navigator.push(ctx, MaterialPageRoute(
-                      builder: (_) => DashboardScreen(
-                        deviceId: _items[i].id,
-                        deviceName: _items[i].name,
-                      ),
-                    )),
-                    onDelete: () => _delete(i),
-                    showDivider: i < _items.length - 1,
-                  );
-                },
-                childCount: _items.length + 1,
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─── Row item ─────────────────────────────────────────────────────────────────
-class _Row extends StatelessWidget {
-  final Terrarium item;
-  final VoidCallback onTap;
-  final VoidCallback onDelete;
-  final bool showDivider;
-  const _Row({required this.item, required this.onTap, required this.onDelete, required this.showDivider});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      onLongPress: onDelete,
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        color: T.bg,
+      body: SafeArea(
+        bottom: false,
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  // Avatar emoji
-                  Container(
-                    width: 40, height: 40,
-                    decoration: BoxDecoration(
-                      color: T.elevated,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Center(child: Text(item.emoji, style: const TextStyle(fontSize: 20))),
-                  ),
-                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(item.name, style: T.t15.copyWith(color: T.textPrimary, fontWeight: FontWeight.w500)),
-                        const SizedBox(height: 1),
-                        Text(item.animal, style: T.t13.copyWith(color: T.textSecondary)),
+                        Text('BONJOUR', style: T.t11.copyWith(color: T.textSecondary, fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 2),
+                        Text('Yoni', style: T.serif(30)),
                       ],
                     ),
                   ),
-                  // Métriques inline
-                  if (item.temperature != null) ...[
-                    _Metric(value: '${item.temperature}°', color: T.green),
-                    const SizedBox(width: 12),
-                    _Metric(value: '${item.humidity?.toInt()}%', color: T.blue),
-                    const SizedBox(width: 12),
-                  ],
-                  // Status dot
-                  Container(
-                    width: 7, height: 7,
-                    decoration: BoxDecoration(
-                      color: item.online ? T.green : T.textTertiary,
-                      shape: BoxShape.circle,
-                    ),
+                  Stack(
+                    children: [
+                      Container(
+                        width: 42, height: 42,
+                        decoration: BoxDecoration(color: T.card2, borderRadius: BorderRadius.circular(21)),
+                        child: const Icon(Icons.notifications_outlined, color: T.textSecondary, size: 22),
+                      ),
+                      Positioned(
+                        top: 8, right: 8,
+                        child: Container(
+                          width: 8, height: 8,
+                          decoration: BoxDecoration(
+                            color: T.gold,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: T.bg, width: 1.5),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 4),
-                  const Icon(Icons.chevron_right, color: T.textTertiary, size: 16),
                 ],
               ),
             ),
-            if (showDivider)
-              const Padding(
-                padding: EdgeInsets.only(left: 68),
-                child: Divider(height: 0),
-              ),
+
+            Expanded(
+              child: !_loaded
+                  ? const Center(child: CupertinoActivityIndicator())
+                  : ListView(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+                      children: [
+                        // Terrarium cards
+                        ..._items.asMap().entries.map((e) => _TerrariumCard(
+                          item: e.value,
+                          onTap: () => Navigator.push(context, MaterialPageRoute(
+                            builder: (_) => DashboardScreen(deviceId: e.value.id, deviceName: e.value.name),
+                          )),
+                          onDelete: () => _delete(e.key),
+                        )),
+
+                        // Prises rapides
+                        if (_items.isNotEmpty) ...[
+                          const SizedBox(height: 20),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text('PRISES RAPIDES', style: T.t11.copyWith(color: T.textSecondary, fontWeight: FontWeight.w600)),
+                              Text('Tout voir', style: T.t13.copyWith(color: T.green)),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          GridView.count(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            crossAxisCount: 2,
+                            childAspectRatio: 1.6,
+                            crossAxisSpacing: 10,
+                            mainAxisSpacing: 10,
+                            children: const [
+                              _RelayQuickBtn(icon: Icons.power_settings_new_rounded, label: 'Lampe UV', status: 'Éteint'),
+                              _RelayQuickBtn(icon: Icons.power_settings_new_rounded, label: 'Chauffage', status: 'Éteint'),
+                              _RelayQuickBtn(icon: Icons.power_settings_new_rounded, label: 'Brumisateur', status: 'Éteint'),
+                              _RelayQuickBtn(icon: Icons.power_settings_new_rounded, label: 'Ventilateur', status: 'Éteint'),
+                            ],
+                          ),
+                        ],
+
+                        const SizedBox(height: 16),
+
+                        // Add card
+                        _AddTerrariumCard(onTap: _add),
+                      ],
+                    ),
+            ),
           ],
         ),
       ),
@@ -231,75 +180,165 @@ class _Row extends StatelessWidget {
   }
 }
 
-class _Metric extends StatelessWidget {
-  final String value;
-  final Color color;
-  const _Metric({required this.value, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(value, style: T.t13.copyWith(color: color, fontWeight: FontWeight.w500));
-  }
-}
-
-// ─── Add row ──────────────────────────────────────────────────────────────────
-class _AddRow extends StatelessWidget {
-  final VoidCallback onTap;
-  const _AddRow({required this.onTap});
+class _TerrariumCard extends StatelessWidget {
+  final Terrarium item;
+  final VoidCallback onTap, onDelete;
+  const _TerrariumCard({required this.item, required this.onTap, required this.onDelete});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Row(
-        children: [
-          Container(
-            width: 40, height: 40,
-            decoration: BoxDecoration(
-              color: T.elevated,
-              borderRadius: BorderRadius.circular(10),
+      onLongPress: onDelete,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: T.card2,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: T.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Row(children: [
+                  Container(width: 8, height: 8,
+                      decoration: BoxDecoration(color: item.online ? T.green : T.textTertiary, shape: BoxShape.circle)),
+                  const SizedBox(width: 6),
+                  Text(item.online ? 'En ligne' : 'Hors ligne',
+                      style: T.t13.copyWith(color: item.online ? T.green : T.textSecondary)),
+                ]),
+                const Spacer(),
+                Text('Terrarium #1', style: T.t13.copyWith(color: T.textSecondary)),
+              ],
             ),
-            child: const Icon(Icons.add, color: T.green, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Text('Ajouter un boîtier', style: T.t15.copyWith(color: T.green)),
+            const SizedBox(height: 10),
+            Row(children: [
+              const Icon(Icons.eco_outlined, color: T.green, size: 22),
+              const SizedBox(width: 8),
+              Text(item.name, style: T.serif(22)),
+            ]),
+            const SizedBox(height: 14),
+            Row(children: [
+              Expanded(child: _MetricBox(
+                icon: Icons.thermostat_outlined,
+                label: 'TEMPÉRATURE',
+                value: item.temperature != null ? '${item.temperature}' : null,
+                unit: '°C',
+                iconColor: T.gold,
+              )),
+              const SizedBox(width: 10),
+              Expanded(child: _MetricBox(
+                icon: Icons.water_drop_outlined,
+                label: 'HUMIDITÉ',
+                value: item.humidity != null ? '${item.humidity?.toInt()}' : null,
+                unit: '%',
+                iconColor: T.gold,
+              )),
+            ]),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MetricBox extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String? value;
+  final String unit;
+  final Color iconColor;
+  const _MetricBox({required this.icon, required this.label, this.value, required this.unit, required this.iconColor});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(color: T.card, borderRadius: BorderRadius.circular(12)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Icon(icon, color: iconColor, size: 14),
+            const SizedBox(width: 5),
+            Text(label, style: T.t11.copyWith(color: T.textSecondary, fontWeight: FontWeight.w600)),
+          ]),
+          const SizedBox(height: 8),
+          value != null
+              ? Text('$value $unit', style: T.t22.copyWith(color: T.textPrimary))
+              : Row(children: [
+                  Container(width: 20, height: 2, color: T.textTertiary, margin: const EdgeInsets.only(right: 4)),
+                  Text(unit, style: T.t16.copyWith(color: T.textSecondary)),
+                ]),
         ],
       ),
     );
   }
 }
 
-// ─── Empty state ──────────────────────────────────────────────────────────────
-class _Empty extends StatelessWidget {
-  final VoidCallback onAdd;
-  const _Empty({required this.onAdd});
+class _RelayQuickBtn extends StatelessWidget {
+  final IconData icon;
+  final String label, status;
+  const _RelayQuickBtn({required this.icon, required this.label, required this.status});
 
   @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text('🦎', style: TextStyle(fontSize: 40)),
-          const SizedBox(height: 12),
-          Text('Aucun terrarium', style: T.t17.copyWith(color: T.textPrimary)),
-          const SizedBox(height: 6),
-          Text('Ajoute un boîtier pour commencer.', style: T.t14.copyWith(color: T.textSecondary)),
-          const SizedBox(height: 24),
-          GestureDetector(
-            onTap: onAdd,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              decoration: BoxDecoration(
-                color: T.green.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text('Ajouter', style: T.t14.copyWith(color: T.green, fontWeight: FontWeight.w600)),
-            ),
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(color: T.card2, borderRadius: BorderRadius.circular(14), border: Border.all(color: T.border)),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Container(
+          width: 32, height: 32,
+          decoration: BoxDecoration(color: T.card, borderRadius: BorderRadius.circular(8)),
+          child: Icon(icon, color: T.textSecondary, size: 18),
+        ),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: T.t14.copyWith(color: T.textPrimary, fontWeight: FontWeight.w600)),
+            Text(status, style: T.t12.copyWith(color: T.textSecondary)),
+          ],
+        ),
+      ],
+    ),
+  );
+}
+
+class _AddTerrariumCard extends StatelessWidget {
+  final VoidCallback onTap;
+  const _AddTerrariumCard({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(24),
+    decoration: BoxDecoration(color: T.card2, borderRadius: BorderRadius.circular(18), border: Border.all(color: T.border)),
+    child: Column(
+      children: [
+        Container(
+          width: 48, height: 48,
+          decoration: BoxDecoration(color: T.green.withValues(alpha: 0.12), shape: BoxShape.circle),
+          child: const Icon(Icons.add, color: T.green, size: 24),
+        ),
+        const SizedBox(height: 12),
+        Text('Ajoute ton premier terrarium', style: T.serif(20), textAlign: TextAlign.center),
+        const SizedBox(height: 6),
+        Text('Connecte ton ESP32 pour démarrer la surveillance',
+            style: T.t14.copyWith(color: T.textSecondary), textAlign: TextAlign.center),
+        const SizedBox(height: 16),
+        GestureDetector(
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+            decoration: BoxDecoration(color: T.greenBtn, borderRadius: BorderRadius.circular(24)),
+            child: Text('Configurer', style: T.t15.copyWith(color: const Color(0xFF0A1A0F), fontWeight: FontWeight.w700)),
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
 }

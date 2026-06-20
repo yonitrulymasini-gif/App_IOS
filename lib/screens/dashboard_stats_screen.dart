@@ -15,12 +15,8 @@ class DashboardStatsScreen extends StatefulWidget {
 
 class _State extends State<DashboardStatsScreen> {
   List<Map<String, dynamic>> _terrariums = [];
-  String? _selId;
   bool _loading = true;
-  int _range = 24;
-
-  List<_Point> _temp  = [];
-  List<_Point> _humid = [];
+  List<_Point> _temp = [], _humid = [];
 
   @override
   void initState() { super.initState(); _load(); }
@@ -29,252 +25,149 @@ class _State extends State<DashboardStatsScreen> {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getStringList('terrariums') ?? [];
     final list = raw.map((e) => jsonDecode(e) as Map<String, dynamic>).toList();
-    setState(() {
-      _terrariums = list;
-      if (list.isNotEmpty) {
-        _selId = list[0]['id'];
-        _gen(list[0]);
-      }
-      _loading = false;
-    });
+    if (list.isNotEmpty) _gen(list[0]);
+    setState(() { _terrariums = list; _loading = false; });
   }
 
   void _gen(Map<String, dynamic> t) {
-    final rng  = Random(t['id'].hashCode);
-    final now  = DateTime.now();
+    final rng = Random(t['id'].hashCode);
+    final now = DateTime.now();
     final base = (t['temperature'] as num?)?.toDouble() ?? 28.0;
     final hum  = (t['humidity'] as num?)?.toDouble() ?? 65.0;
-    _temp  = List.generate(72, (i) {
-      final dt = now.subtract(Duration(hours: 72 - i));
-      return _Point(dt, base + sin((dt.hour - 6) * pi / 12) * 3 + (rng.nextDouble() - 0.5) * 1.5);
-    });
-    _humid = List.generate(72, (i) {
-      final dt = now.subtract(Duration(hours: 72 - i));
-      return _Point(dt, (hum + (rng.nextDouble() - 0.5) * 8).clamp(30.0, 95.0));
-    });
+    _temp  = List.generate(72, (i) { final dt = now.subtract(Duration(hours: 72 - i)); return _Point(dt, base + sin((dt.hour - 6) * pi / 12) * 3 + (rng.nextDouble() - 0.5) * 1.5); });
+    _humid = List.generate(72, (i) { final dt = now.subtract(Duration(hours: 72 - i)); return _Point(dt, (hum + (rng.nextDouble() - 0.5) * 8).clamp(30.0, 95.0)); });
   }
-
-  List<_Point> _f(List<_Point> d) {
-    final cut = DateTime.now().subtract(Duration(hours: _range));
-    return d.where((p) => p.t.isAfter(cut)).toList();
-  }
-
-  double _avg(List<_Point> d) => d.isEmpty ? 0 : d.map((p) => p.v).reduce((a, b) => a + b) / d.length;
-  double _min(List<_Point> d) => d.isEmpty ? 0 : d.map((p) => p.v).reduce(min);
-  double _max(List<_Point> d) => d.isEmpty ? 0 : d.map((p) => p.v).reduce(max);
 
   @override
   Widget build(BuildContext context) {
-    final ft = _f(_temp);
-    final fh = _f(_humid);
-
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          const SliverAppBar(pinned: true, title: Text('Dashboard'),
-              backgroundColor: T.bg, surfaceTintColor: Colors.transparent),
-
-          if (_loading)
-            const SliverFillRemaining(child: Center(child: CupertinoActivityIndicator()))
-          else if (_terrariums.isEmpty)
-            SliverFillRemaining(child: Center(
-              child: Text('Aucun terrarium', style: T.t15.copyWith(color: T.textSecondary)),
-            ))
-          else
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 8),
-
-                    // Sélecteur terrarium
-                    if (_terrariums.length > 1) ...[
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: _terrariums.map((t) {
-                            final sel = t['id'] == _selId;
-                            return GestureDetector(
-                              onTap: () => setState(() { _selId = t['id']; _gen(t); }),
-                              child: Container(
-                                margin: const EdgeInsets.only(right: 8),
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: sel ? T.green.withValues(alpha: 0.12) : T.elevated,
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(color: sel ? T.green : Colors.transparent),
-                                ),
-                                child: Text('${t['emoji']} ${t['name']}',
-                                    style: T.t13.copyWith(
-                                        color: sel ? T.green : T.textSecondary,
-                                        fontWeight: sel ? FontWeight.w600 : FontWeight.normal)),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-
-                    // Sélecteur plage
-                    Row(
-                      children: [6, 24, 48, 72].map((h) {
-                        final sel = _range == h;
-                        return GestureDetector(
-                          onTap: () => setState(() => _range = h),
-                          child: Container(
-                            margin: const EdgeInsets.only(right: 6),
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: sel ? T.green : Colors.transparent,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text('${h}h', style: T.t13.copyWith(
-                                color: sel ? T.bg : T.textSecondary,
-                                fontWeight: sel ? FontWeight.w600 : FontWeight.normal)),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Stat row temp
-                    _StatRow(
-                      label: 'Température',
-                      unit: '°C',
-                      color: T.green,
-                      avg: _avg(ft), mn: _min(ft), mx: _max(ft),
-                    ),
-                    const SizedBox(height: 8),
-                    _Chart(data: ft, color: T.green, minY: 15, maxY: 45),
-                    const SizedBox(height: 28),
-
-                    // Stat row humid
-                    _StatRow(
-                      label: 'Humidité',
-                      unit: '%',
-                      color: T.blue,
-                      avg: _avg(fh), mn: _min(fh), mx: _max(fh),
-                    ),
-                    const SizedBox(height: 8),
-                    _Chart(data: fh, color: T.blue, minY: 20, maxY: 100),
-                    const SizedBox(height: 40),
-                  ],
-                ),
-              ),
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('MESURES', style: T.t11.copyWith(color: T.textSecondary, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 2),
+                Text('Dashboard', style: T.serif(30)),
+              ]),
             ),
-        ],
+            Expanded(
+              child: _loading
+                  ? const Center(child: CupertinoActivityIndicator())
+                  : ListView(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+                      children: [
+                        // Temp air
+                        _SensorCard(
+                          icon: Icons.thermostat_outlined, iconColor: T.gold,
+                          label: 'Température air', tag: 'AM2320',
+                          value: _temp.isNotEmpty ? _temp.last.v : null, unit: '°C',
+                        ),
+                        const SizedBox(height: 10),
+                        // Sondes grid
+                        Row(children: [
+                          Expanded(child: _SensorCard(
+                            icon: Icons.thermostat_outlined, iconColor: T.gold,
+                            label: 'Sonde 1', tag: 'DS18B20',
+                            value: null, unit: '°C',
+                          )),
+                          const SizedBox(width: 10),
+                          Expanded(child: _SensorCard(
+                            icon: Icons.thermostat_outlined, iconColor: T.gold,
+                            label: 'Sonde 2', tag: 'DS18B20',
+                            value: null, unit: '°C',
+                          )),
+                        ]),
+                        const SizedBox(height: 10),
+                        // Humidité
+                        _SensorCard(
+                          icon: Icons.water_drop_outlined, iconColor: T.gold,
+                          label: 'Humidité', tag: 'AM2320',
+                          value: _humid.isNotEmpty ? _humid.last.v : null, unit: '%',
+                        ),
+                        const SizedBox(height: 24),
+                        Text('CONTRÔLE DES PRISES',
+                            style: T.t11.copyWith(color: T.textSecondary, fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 12),
+                        _RelayItem(icon: Icons.light_outlined, label: 'Lampe UV', sub: 'Prise 1'),
+                        _RelayItem(icon: Icons.local_fire_department_outlined, label: 'Chauffage', sub: 'Prise 2'),
+                        _RelayItem(icon: Icons.cloud_outlined, label: 'Brumisateur', sub: 'Prise 3'),
+                        _RelayItem(icon: Icons.air, label: 'Ventilateur', sub: 'Prise 4'),
+                        const SizedBox(height: 12),
+                        Text('Connecte ton ESP32 via MQTT pour activer les données en direct',
+                            style: T.t13.copyWith(color: T.textSecondary), textAlign: TextAlign.center),
+                      ],
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _StatRow extends StatelessWidget {
-  final String label, unit;
-  final Color color;
-  final double avg, mn, mx;
-  const _StatRow({required this.label, required this.unit, required this.color,
-    required this.avg, required this.mn, required this.mx});
+class _SensorCard extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String label, tag;
+  final double? value;
+  final String unit;
+  const _SensorCard({required this.icon, required this.iconColor, required this.label,
+    required this.tag, required this.value, required this.unit});
 
   @override
-  Widget build(BuildContext context) => Row(children: [
-    Expanded(child: Text(label, style: T.t14.copyWith(color: T.textPrimary, fontWeight: FontWeight.w500))),
-    _Val('moy', '${avg.toStringAsFixed(1)}$unit', color),
-    const SizedBox(width: 16),
-    _Val('min', '${mn.toStringAsFixed(1)}$unit', T.textSecondary),
-    const SizedBox(width: 16),
-    _Val('max', '${mx.toStringAsFixed(1)}$unit', T.textSecondary),
-  ]);
-}
-
-class _Val extends StatelessWidget {
-  final String label, value;
-  final Color color;
-  const _Val(this.label, this.value, this.color);
-  @override
-  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-    Text(value, style: T.t13.copyWith(color: color, fontWeight: FontWeight.w600)),
-    Text(label,  style: T.t12.copyWith(color: T.textTertiary)),
-  ]);
-}
-
-class _Chart extends StatelessWidget {
-  final List<_Point> data;
-  final Color color;
-  final double minY, maxY;
-  const _Chart({required this.data, required this.color, required this.minY, required this.maxY});
-
-  @override
-  Widget build(BuildContext context) => SizedBox(
-    height: 100,
-    child: data.isEmpty
-        ? Center(child: Text('Pas de données', style: T.t13.copyWith(color: T.textTertiary)))
-        : CustomPaint(size: const Size(double.infinity, 100),
-            painter: _Painter(data: data, color: color, minY: minY, maxY: maxY)),
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(16),
+    margin: const EdgeInsets.only(bottom: 0),
+    decoration: BoxDecoration(color: T.card2, borderRadius: BorderRadius.circular(18), border: Border.all(color: T.border)),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [
+        Icon(icon, color: iconColor, size: 16),
+        const SizedBox(width: 6),
+        Expanded(child: Text(label, style: T.t14.copyWith(color: T.textPrimary, fontWeight: FontWeight.w500))),
+        Text(tag, style: T.t12.copyWith(color: T.textSecondary)),
+      ]),
+      const SizedBox(height: 10),
+      value != null
+          ? Text('${value!.toStringAsFixed(1)} $unit', style: T.t22.copyWith(color: T.textPrimary, fontSize: 24))
+          : Row(children: [
+              Container(width: 20, height: 2, color: T.textTertiary, margin: const EdgeInsets.only(right: 4)),
+              Text(unit, style: T.t16.copyWith(color: T.textSecondary)),
+            ]),
+    ]),
   );
 }
 
-class _Painter extends CustomPainter {
-  final List<_Point> data;
-  final Color color;
-  final double minY, maxY;
-  _Painter({required this.data, required this.color, required this.minY, required this.maxY});
-
-  double _x(int i, double w) {
-    final st = data.first.t.millisecondsSinceEpoch.toDouble();
-    final en = data.last.t.millisecondsSinceEpoch.toDouble();
-    if (en == st) return w;
-    return (data[i].t.millisecondsSinceEpoch - st) / (en - st) * w;
-  }
-
-  double _y(double v, double h) => h - ((v - minY) / (maxY - minY) * h).clamp(0, h);
-
+class _RelayItem extends StatefulWidget {
+  final IconData icon;
+  final String label, sub;
+  const _RelayItem({required this.icon, required this.label, required this.sub});
   @override
-  void paint(Canvas canvas, Size s) {
-    // Grid lines
-    for (int i = 0; i <= 3; i++) {
-      canvas.drawLine(Offset(0, s.height * i / 3), Offset(s.width, s.height * i / 3),
-          Paint()..color = T.border..strokeWidth = 0.5);
-    }
+  State<_RelayItem> createState() => _RelayItemState();
+}
 
-    if (data.length < 2) return;
-
-    // Fill
-    final fill = Path()..moveTo(_x(0, s.width), s.height);
-    fill.lineTo(_x(0, s.width), _y(data[0].v, s.height));
-    for (int i = 1; i < data.length; i++) {
-      final px = _x(i - 1, s.width), py = _y(data[i - 1].v, s.height);
-      final cx = _x(i, s.width),     cy = _y(data[i].v, s.height);
-      final cpx = px + (cx - px) / 2;
-      fill.cubicTo(cpx, py, cpx, cy, cx, cy);
-    }
-    fill..lineTo(_x(data.length - 1, s.width), s.height)..close();
-    canvas.drawPath(fill, Paint()
-      ..shader = LinearGradient(
-        begin: Alignment.topCenter, end: Alignment.bottomCenter,
-        colors: [color.withValues(alpha: 0.18), color.withValues(alpha: 0)],
-      ).createShader(Rect.fromLTWH(0, 0, s.width, s.height)));
-
-    // Line
-    final line = Path()..moveTo(_x(0, s.width), _y(data[0].v, s.height));
-    for (int i = 1; i < data.length; i++) {
-      final px = _x(i - 1, s.width), py = _y(data[i - 1].v, s.height);
-      final cx = _x(i, s.width),     cy = _y(data[i].v, s.height);
-      final cpx = px + (cx - px) / 2;
-      line.cubicTo(cpx, py, cpx, cy, cx, cy);
-    }
-    canvas.drawPath(line, Paint()
-      ..color = color..strokeWidth = 1.5..style = PaintingStyle.stroke..strokeCap = StrokeCap.round);
-
-    // Dot dernier point
-    final lx = _x(data.length - 1, s.width);
-    final ly = _y(data.last.v, s.height);
-    canvas.drawCircle(Offset(lx, ly), 3, Paint()..color = color);
-    canvas.drawCircle(Offset(lx, ly), 6, Paint()..color = color.withValues(alpha: 0.2));
-  }
-
+class _RelayItemState extends State<_RelayItem> {
+  bool _on = false;
   @override
-  bool shouldRepaint(_Painter o) => o.data != data;
+  Widget build(BuildContext context) => Container(
+    margin: const EdgeInsets.only(bottom: 10),
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    decoration: BoxDecoration(color: T.card2, borderRadius: BorderRadius.circular(16), border: Border.all(color: T.border)),
+    child: Row(children: [
+      Container(
+        width: 40, height: 40,
+        decoration: BoxDecoration(color: T.card, borderRadius: BorderRadius.circular(10)),
+        child: Icon(widget.icon, color: T.textSecondary, size: 20),
+      ),
+      const SizedBox(width: 12),
+      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(widget.label, style: T.t15.copyWith(color: T.textPrimary, fontWeight: FontWeight.w600)),
+        Text(widget.sub, style: T.t13.copyWith(color: T.textSecondary)),
+      ])),
+      CupertinoSwitch(value: _on, onChanged: (v) => setState(() => _on = v), activeTrackColor: T.green),
+    ]),
+  );
 }

@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'app_theme.dart';
+import 'onboarding_screen.dart';
 import 'main_shell.dart';
 
 class AuthScreen extends StatefulWidget {
@@ -15,21 +16,19 @@ class AuthScreen extends StatefulWidget {
 class _AuthScreenState extends State<AuthScreen> {
   final _email    = TextEditingController();
   final _password = TextEditingController();
-  bool _isLogin        = true;
-  bool _obscure        = true;
-  String? _loading;   // 'email' | 'google' | 'apple' | 'anon'
+  bool _isLogin = true;
+  bool _obscure = true;
+  String? _loading;
   String? _error;
 
   void _goHome() => Navigator.pushReplacement(context,
       MaterialPageRoute(builder: (_) => const MainShell()));
 
-  void _setLoading(String? p) =>
-      setState(() { _loading = p; _error = null; });
+  void _setLoading(String? p) => setState(() { _loading = p; _error = null; });
 
   Future<void> _submitEmail() async {
     if (_email.text.trim().isEmpty || _password.text.trim().isEmpty) {
-      setState(() => _error = 'Champs requis.');
-      return;
+      setState(() => _error = 'Champs requis.'); return;
     }
     _setLoading('email');
     try {
@@ -43,12 +42,12 @@ class _AuthScreenState extends State<AuthScreen> {
       _goHome();
     } on FirebaseAuthException catch (e) {
       setState(() => _error = switch (e.code) {
-        'user-not-found'      => 'Compte introuvable.',
-        'wrong-password'      => 'Mot de passe incorrect.',
-        'invalid-credential'  => 'Identifiants incorrects.',
-        'email-already-in-use'=> 'Email déjà utilisé.',
-        'weak-password'       => 'Mot de passe trop court.',
-        _                     => e.message ?? 'Erreur.',
+        'user-not-found'       => 'Compte introuvable.',
+        'wrong-password'       => 'Mot de passe incorrect.',
+        'invalid-credential'   => 'Identifiants incorrects.',
+        'email-already-in-use' => 'Email déjà utilisé.',
+        'weak-password'        => 'Mot de passe trop court.',
+        _                      => e.message ?? 'Erreur.',
       });
     } finally { _setLoading(null); }
   }
@@ -60,8 +59,7 @@ class _AuthScreenState extends State<AuthScreen> {
       if (u == null) { _setLoading(null); return; }
       final auth = await u.authentication;
       await FirebaseAuth.instance.signInWithCredential(
-          GoogleAuthProvider.credential(
-              accessToken: auth.accessToken, idToken: auth.idToken));
+          GoogleAuthProvider.credential(accessToken: auth.accessToken, idToken: auth.idToken));
       _goHome();
     } catch (_) { setState(() => _error = 'Connexion Google annulée.'); }
     finally { _setLoading(null); }
@@ -77,25 +75,12 @@ class _AuthScreenState extends State<AuthScreen> {
               idToken: cred.identityToken, accessToken: cred.authorizationCode));
       _goHome();
     } on SignInWithAppleAuthorizationException catch (e) {
-      if (e.code != AuthorizationErrorCode.canceled)
-        setState(() => _error = 'Erreur Apple.');
+      if (e.code != AuthorizationErrorCode.canceled) setState(() => _error = 'Erreur Apple.');
     } finally { _setLoading(null); }
   }
 
-  Future<void> _anon() async {
-    _setLoading('anon');
-    try {
-      await FirebaseAuth.instance.signInAnonymously();
-      _goHome();
-    } catch (_) { setState(() => _error = 'Erreur.'); }
-    finally { _setLoading(null); }
-  }
-
   Future<void> _forgot() async {
-    if (_email.text.trim().isEmpty) {
-      setState(() => _error = 'Entre ton email d\'abord.');
-      return;
-    }
+    if (_email.text.trim().isEmpty) { setState(() => _error = 'Entre ton email d\'abord.'); return; }
     await FirebaseAuth.instance.sendPasswordResetEmail(email: _email.text.trim());
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Email envoyé')));
@@ -108,215 +93,202 @@ class _AuthScreenState extends State<AuthScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 56),
-
-              // Logo
-              const Text('🦎', textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 48)),
-              const SizedBox(height: 8),
-              Text(_isLogin ? 'Connexion' : 'Créer un compte',
-                  textAlign: TextAlign.center,
-                  style: T.t22.copyWith(color: T.textPrimary)),
-              const SizedBox(height: 4),
-              Text('TerrariumApp',
-                  textAlign: TextAlign.center,
-                  style: T.t13.copyWith(color: T.textSecondary)),
-              const SizedBox(height: 36),
-
-              // Email
-              TextField(
-                controller: _email,
-                keyboardType: TextInputType.emailAddress,
-                style: const TextStyle(color: T.textPrimary, fontSize: 15),
-                decoration: const InputDecoration(hintText: 'Email'),
+        child: Column(
+          children: [
+            // Back
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () => Navigator.pushReplacement(context,
+                    MaterialPageRoute(builder: (_) => const OnboardingScreen())),
+                icon: const Icon(Icons.arrow_back_ios_new, size: 16, color: T.textSecondary),
+                label: Text('Retour', style: T.t15.copyWith(color: T.textSecondary)),
               ),
-              const SizedBox(height: 10),
-
-              // Password
-              TextField(
-                controller: _password,
-                obscureText: _obscure,
-                style: const TextStyle(color: T.textPrimary, fontSize: 15),
-                onSubmitted: (_) => _submitEmail(),
-                decoration: InputDecoration(
-                  hintText: 'Mot de passe',
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                      color: T.textSecondary, size: 18,
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const SizedBox(height: 12),
+                    // Icon
+                    Container(
+                      width: 56, height: 56,
+                      decoration: BoxDecoration(color: T.card2, borderRadius: BorderRadius.circular(14)),
+                      child: const Icon(Icons.eco_outlined, color: T.green, size: 28),
                     ),
-                    onPressed: () => setState(() => _obscure = !_obscure),
-                  ),
+                    const SizedBox(height: 20),
+                    Text('Bon retour', style: T.serif(32)),
+                    const SizedBox(height: 6),
+                    Text('Connecte-toi à ta jungle', style: T.t15.copyWith(color: T.textSecondary)),
+                    const SizedBox(height: 32),
+
+                    // Google
+                    _SocialBtn(
+                      onTap: _loading != null ? null : _google,
+                      loading: _loading == 'google',
+                      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                        Image.network(
+                          'https://www.google.com/favicon.ico',
+                          width: 20, height: 20,
+                          errorBuilder: (_, __, ___) => const Icon(Icons.g_mobiledata, size: 24, color: Colors.white),
+                        ),
+                        const SizedBox(width: 10),
+                        Text('Continuer avec Google', style: T.t16.copyWith(color: T.textPrimary, fontWeight: FontWeight.w500)),
+                      ]),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Divider
+                    Row(children: [
+                      const Expanded(child: Divider()),
+                      Padding(padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Text('ou', style: T.t14.copyWith(color: T.textSecondary))),
+                      const Expanded(child: Divider()),
+                    ]),
+                    const SizedBox(height: 20),
+
+                    // Email
+                    _InputField(
+                      controller: _email,
+                      hint: 'ton@email.com',
+                      icon: Icons.mail_outline_rounded,
+                      keyboardType: TextInputType.emailAddress,
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Password
+                    _InputField(
+                      controller: _password,
+                      hint: 'Mot de passe',
+                      icon: Icons.lock_outline_rounded,
+                      obscure: _obscure,
+                      onSubmit: _submitEmail,
+                      suffix: IconButton(
+                        icon: Icon(_obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                            color: T.textSecondary, size: 20),
+                        onPressed: () => setState(() => _obscure = !_obscure),
+                      ),
+                    ),
+
+                    if (_isLogin) Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: _forgot,
+                        child: Text('Mot de passe oublié ?', style: T.t13.copyWith(color: T.textSecondary)),
+                      ),
+                    ) else const SizedBox(height: 12),
+
+                    if (_error != null) Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Text(_error!, style: T.t13.copyWith(color: T.red)),
+                    ),
+
+                    // Submit
+                    _GreenBtn(
+                      label: _isLogin ? 'Se connecter' : 'Créer le compte',
+                      loading: _loading == 'email',
+                      disabled: _loading != null,
+                      onTap: _submitEmail,
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Toggle
+                    Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                      Text(
+                        _isLogin ? 'Pas encore de compte ? ' : 'Déjà un compte ? ',
+                        style: T.t14.copyWith(color: T.textSecondary),
+                      ),
+                      GestureDetector(
+                        onTap: () => setState(() { _isLogin = !_isLogin; _error = null; }),
+                        child: Text(
+                          _isLogin ? 'Inscris-toi' : 'Se connecter',
+                          style: T.t14.copyWith(color: T.green, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ]),
+                    const SizedBox(height: 24),
+                  ],
                 ),
               ),
-
-              // Mot de passe oublié
-              if (_isLogin) Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: _forgot,
-                  style: TextButton.styleFrom(padding: EdgeInsets.zero,
-                      minimumSize: const Size(0, 36)),
-                  child: Text('Mot de passe oublié ?',
-                      style: T.t13.copyWith(color: T.textSecondary)),
-                ),
-              ) else const SizedBox(height: 10),
-
-              // Erreur
-              if (_error != null) ...[
-                const SizedBox(height: 4),
-                Text(_error!, style: T.t13.copyWith(color: T.red)),
-                const SizedBox(height: 8),
-              ],
-              const SizedBox(height: 4),
-
-              // Bouton principal
-              _Btn(
-                label: _isLogin ? 'Se connecter' : 'Créer le compte',
-                loading: _loading == 'email',
-                disabled: _loading != null,
-                onTap: _submitEmail,
-                primary: true,
-              ),
-              const SizedBox(height: 20),
-
-              // Séparateur
-              Row(children: [
-                const Expanded(child: Divider()),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Text('ou', style: T.t13.copyWith(color: T.textSecondary)),
-                ),
-                const Expanded(child: Divider()),
-              ]),
-              const SizedBox(height: 16),
-
-              // Google
-              _Btn(
-                label: 'Continuer avec Google',
-                loading: _loading == 'google',
-                disabled: _loading != null,
-                onTap: _google,
-                icon: const _GoogleIcon(),
-              ),
-              const SizedBox(height: 10),
-
-              // Apple
-              _Btn(
-                label: 'Continuer avec Apple',
-                loading: _loading == 'apple',
-                disabled: _loading != null,
-                onTap: _apple,
-                icon: const Icon(Icons.apple, color: T.textPrimary, size: 18),
-              ),
-              const SizedBox(height: 10),
-
-              // Anonyme
-              _Btn(
-                label: 'Continuer en tant qu\'invité',
-                loading: _loading == 'anon',
-                disabled: _loading != null,
-                onTap: _anon,
-                ghost: true,
-              ),
-              const SizedBox(height: 28),
-
-              // Toggle
-              Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                Text(
-                  _isLogin ? 'Pas encore de compte ?' : 'Déjà un compte ?',
-                  style: T.t13.copyWith(color: T.textSecondary),
-                ),
-                TextButton(
-                  onPressed: () => setState(() { _isLogin = !_isLogin; _error = null; }),
-                  style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 6)),
-                  child: Text(
-                    _isLogin ? 'S\'inscrire' : 'Se connecter',
-                    style: T.t13.copyWith(color: T.green, fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ]),
-              const SizedBox(height: 24),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _Btn extends StatelessWidget {
-  final String label;
-  final bool loading, disabled, primary, ghost;
-  final VoidCallback onTap;
-  final Widget? icon;
-  const _Btn({
-    required this.label, required this.loading,
-    required this.disabled, required this.onTap,
-    this.primary = false, this.ghost = false, this.icon,
-  });
+class _InputField extends StatelessWidget {
+  final TextEditingController controller;
+  final String hint;
+  final IconData icon;
+  final bool obscure;
+  final TextInputType? keyboardType;
+  final Widget? suffix;
+  final VoidCallback? onSubmit;
+  const _InputField({required this.controller, required this.hint, required this.icon,
+    this.obscure = false, this.keyboardType, this.suffix, this.onSubmit});
 
   @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: disabled ? null : onTap,
-      child: AnimatedOpacity(
-        duration: const Duration(milliseconds: 150),
-        opacity: disabled && !loading ? 0.5 : 1.0,
-        child: Container(
-          height: 48,
-          decoration: BoxDecoration(
-            color: primary ? T.green : (ghost ? Colors.transparent : T.elevated),
-            borderRadius: BorderRadius.circular(10),
-            border: ghost ? Border.all(color: T.border) : null,
-          ),
-          child: loading
-              ? Center(child: CupertinoActivityIndicator(
-                  color: primary ? T.bg : T.textSecondary))
-              : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  if (icon != null) ...[icon!, const SizedBox(width: 8)],
-                  Text(label, style: T.t14.copyWith(
-                    color: primary ? T.bg : (ghost ? T.textSecondary : T.textPrimary),
-                    fontWeight: FontWeight.w600,
-                  )),
-                ]),
-        ),
-      ),
-    );
-  }
-}
-
-class _GoogleIcon extends StatelessWidget {
-  const _GoogleIcon();
-  @override
-  Widget build(BuildContext context) => SizedBox(
-    width: 18, height: 18,
-    child: CustomPaint(painter: _GP()),
+  Widget build(BuildContext context) => TextField(
+    controller: controller,
+    obscureText: obscure,
+    keyboardType: keyboardType,
+    style: T.t16.copyWith(color: T.textPrimary),
+    onSubmitted: onSubmit != null ? (_) => onSubmit!() : null,
+    decoration: InputDecoration(
+      hintText: hint,
+      prefixIcon: Icon(icon, color: T.textSecondary, size: 20),
+      suffixIcon: suffix,
+    ),
   );
 }
 
-class _GP extends CustomPainter {
+class _SocialBtn extends StatelessWidget {
+  final Widget child;
+  final VoidCallback? onTap;
+  final bool loading;
+  const _SocialBtn({required this.child, this.onTap, this.loading = false});
+
   @override
-  void paint(Canvas canvas, Size s) {
-    final c = Offset(s.width / 2, s.height / 2);
-    final r = s.width / 2;
-    const cols = [Color(0xFF4285F4), Color(0xFF34A853), Color(0xFFFBBC05), Color(0xFFEA4335)];
-    for (int i = 0; i < 4; i++) {
-      canvas.drawArc(
-        Rect.fromCircle(center: c, radius: r - 1.5),
-        (i * 90 - 45) * 3.14159 / 180, 80 * 3.14159 / 180, false,
-        Paint()..color = cols[i]..style = PaintingStyle.stroke..strokeWidth = 2.5..strokeCap = StrokeCap.butt,
-      );
-    }
-    canvas.drawLine(Offset(c.dx, c.dy), Offset(c.dx + r - 1.5, c.dy),
-        Paint()..color = const Color(0xFF4285F4)..strokeWidth = 2.5..strokeCap = StrokeCap.round);
-  }
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      height: 56,
+      decoration: BoxDecoration(
+        color: T.card2,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: T.border),
+      ),
+      child: loading
+          ? const Center(child: CupertinoActivityIndicator())
+          : Center(child: child),
+    ),
+  );
+}
+
+class _GreenBtn extends StatelessWidget {
+  final String label;
+  final bool loading, disabled;
+  final VoidCallback onTap;
+  const _GreenBtn({required this.label, required this.onTap,
+    this.loading = false, this.disabled = false});
+
   @override
-  bool shouldRepaint(_GP _) => false;
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: disabled ? null : onTap,
+    child: Container(
+      height: 58,
+      decoration: BoxDecoration(
+        color: T.greenBtn,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: loading
+          ? const Center(child: CupertinoActivityIndicator(color: Color(0xFF0A1A0F)))
+          : Center(child: Text(label,
+              style: T.t17.copyWith(color: const Color(0xFF0A1A0F)))),
+    ),
+  );
 }

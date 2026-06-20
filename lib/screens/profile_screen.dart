@@ -2,21 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'app_theme.dart';
-import 'auth_screen.dart';
+import 'onboarding_screen.dart';
 
-class ProfileScreen extends StatefulWidget {
+class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
-  @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
-}
 
-class _ProfileScreenState extends State<ProfileScreen> {
-  final _user = FirebaseAuth.instance.currentUser;
-  bool _notifs = true;
-  bool _autoConnect = true;
-  String _broker = 'broker.hivemq.com';
-
-  Future<void> _signOut() async {
+  Future<void> _signOut(BuildContext context) async {
     final ok = await showCupertinoDialog<bool>(
       context: context,
       builder: (_) => CupertinoAlertDialog(
@@ -29,167 +20,124 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
     if (ok == true) {
       await FirebaseAuth.instance.signOut();
-      if (mounted) Navigator.pushAndRemoveUntil(context,
-        MaterialPageRoute(builder: (_) => const AuthScreen()), (_) => false);
+      if (context.mounted) {
+        Navigator.pushAndRemoveUntil(context,
+            MaterialPageRoute(builder: (_) => const OnboardingScreen()), (_) => false);
+      }
     }
-  }
-
-  Future<void> _resetPassword() async {
-    if (_user?.email == null) return;
-    await FirebaseAuth.instance.sendPasswordResetEmail(email: _user!.email!);
-    if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Email envoyé')));
-  }
-
-  void _editBroker() {
-    final ctrl = TextEditingController(text: _broker);
-    showCupertinoDialog(
-      context: context,
-      builder: (_) => CupertinoAlertDialog(
-        title: const Text('Broker MQTT'),
-        content: Padding(
-          padding: const EdgeInsets.only(top: 8),
-          child: CupertinoTextField(controller: ctrl, placeholder: 'broker.hivemq.com'),
-        ),
-        actions: [
-          CupertinoDialogAction(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
-          CupertinoDialogAction(
-            isDefaultAction: true,
-            onPressed: () { setState(() => _broker = ctrl.text.trim()); Navigator.pop(context); },
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final email = _user?.email ?? 'Invité';
-    final initial = email[0].toUpperCase();
+    final user = FirebaseAuth.instance.currentUser;
+    final email = user?.email ?? 'Invité';
+    final name  = user?.displayName ?? email.split('@').first;
+    final initial = name.isNotEmpty ? name[0].toUpperCase() : 'Y';
 
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          const SliverAppBar(pinned: true, title: Text('Profil'), backgroundColor: T.bg, surfaceTintColor: Colors.transparent),
-          SliverToBoxAdapter(
-            child: Column(
-              children: [
-                // ── Avatar ──────────────────────────────────────────────
-                const SizedBox(height: 24),
-                Container(
-                  width: 56, height: 56,
-                  decoration: BoxDecoration(
-                    color: T.green.withValues(alpha: 0.12),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Center(child: Text(initial,
-                      style: T.t22.copyWith(color: T.green, fontSize: 22))),
-                ),
-                const SizedBox(height: 10),
-                Text(email, style: T.t15.copyWith(color: T.textPrimary)),
-                const SizedBox(height: 4),
-                Text(_user?.isAnonymous == true ? 'Compte invité' : 'Compte Firebase',
-                    style: T.t13.copyWith(color: T.textSecondary)),
-                const SizedBox(height: 32),
-
-                // ── Section Notifications ────────────────────────────────
-                _SectionHeader('NOTIFICATIONS'),
-                _ToggleRow(label: 'Alertes capteurs', value: _notifs,
-                    onChanged: (v) => setState(() => _notifs = v)),
-                const Divider(height: 0, indent: 16),
-
-                // ── Section Connexion ────────────────────────────────────
-                const SizedBox(height: 24),
-                _SectionHeader('CONNEXION MQTT'),
-                _ToggleRow(label: 'Auto-connexion', value: _autoConnect,
-                    onChanged: (v) => setState(() => _autoConnect = v)),
-                const Divider(height: 0, indent: 16),
-                _TapRow(label: 'Broker', value: _broker, onTap: _editBroker),
-
-                // ── Section Compte ───────────────────────────────────────
-                const SizedBox(height: 24),
-                _SectionHeader('COMPTE'),
-                _TapRow(label: 'Changer le mot de passe', onTap: _resetPassword),
-                const Divider(height: 0, indent: 16),
-                _TapRow(label: 'Version', value: '1.0.1', onTap: null),
-
-                // ── Déconnexion ──────────────────────────────────────────
-                const SizedBox(height: 32),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: GestureDetector(
-                    onTap: _signOut,
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      decoration: BoxDecoration(
-                        color: T.red.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(10),
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('PROFIL', style: T.t11.copyWith(color: T.textSecondary, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 2),
+                Text('Mon compte', style: T.serif(30)),
+              ]),
+            ),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+                children: [
+                  // User card
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(color: T.card2, borderRadius: BorderRadius.circular(18), border: Border.all(color: T.border)),
+                    child: Row(children: [
+                      Container(
+                        width: 56, height: 56,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
+                              colors: [Color(0xFF4A8A5A), Color(0xFF6AB07A)]),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Center(child: Text(initial, style: T.serif(24, c: Colors.white))),
                       ),
-                      child: Text('Se déconnecter',
-                          textAlign: TextAlign.center,
-                          style: T.t15.copyWith(color: T.red, fontWeight: FontWeight.w500)),
+                      const SizedBox(width: 14),
+                      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(name, style: T.t17.copyWith(color: T.textPrimary)),
+                        const SizedBox(height: 2),
+                        Text(email, style: T.t13.copyWith(color: T.textSecondary)),
+                      ]),
+                    ]),
+                  ),
+
+                  _ProfileItem(icon: Icons.memory_outlined,   label: 'Mes appareils', sub: '0 ESP32 connecté'),
+                  _ProfileItem(icon: Icons.settings_outlined, label: 'Paramètres',     sub: 'Notifications, unités'),
+                  _ProfileItem(icon: Icons.help_outline,      label: 'Aide',           sub: 'Guide ESP32, MQTT, FAQ'),
+
+                  const SizedBox(height: 8),
+
+                  // Logout
+                  GestureDetector(
+                    onTap: () => _signOut(context),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      decoration: BoxDecoration(
+                        color: T.redBg,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: T.red.withValues(alpha: 0.25)),
+                      ),
+                      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                        const Icon(Icons.logout_rounded, color: T.red, size: 20),
+                        const SizedBox(width: 8),
+                        Text('Se déconnecter', style: T.t16.copyWith(color: T.red, fontWeight: FontWeight.w600)),
+                      ]),
                     ),
                   ),
-                ),
-                const SizedBox(height: 48),
-              ],
+
+                  const SizedBox(height: 24),
+
+                  // Version
+                  Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    const Icon(Icons.eco_outlined, color: T.green, size: 14),
+                    const SizedBox(width: 6),
+                    Text('Terra · v0.1', style: T.t13.copyWith(color: T.textSecondary)),
+                  ]),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
-class _SectionHeader extends StatelessWidget {
-  final String label;
-  const _SectionHeader(this.label);
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-    child: Align(
-      alignment: Alignment.centerLeft,
-      child: Text(label, style: T.t12.copyWith(color: T.textSecondary, letterSpacing: 0.5)),
-    ),
-  );
-}
+class _ProfileItem extends StatelessWidget {
+  final IconData icon;
+  final String label, sub;
+  const _ProfileItem({required this.icon, required this.label, required this.sub});
 
-class _ToggleRow extends StatelessWidget {
-  final String label;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-  const _ToggleRow({required this.label, required this.value, required this.onChanged});
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+  Widget build(BuildContext context) => Container(
+    margin: const EdgeInsets.only(bottom: 10),
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+    decoration: BoxDecoration(color: T.card2, borderRadius: BorderRadius.circular(16), border: Border.all(color: T.border)),
     child: Row(children: [
-      Expanded(child: Text(label, style: T.t15.copyWith(color: T.textPrimary))),
-      CupertinoSwitch(value: value, onChanged: onChanged, activeTrackColor: T.green),
+      Container(width: 36, height: 36,
+          decoration: BoxDecoration(color: T.card, borderRadius: BorderRadius.circular(9)),
+          child: Icon(icon, color: T.textSecondary, size: 18)),
+      const SizedBox(width: 12),
+      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(label, style: T.t15.copyWith(color: T.textPrimary, fontWeight: FontWeight.w500)),
+        Text(sub, style: T.t13.copyWith(color: T.textSecondary)),
+      ])),
+      const Icon(Icons.chevron_right, color: T.textTertiary, size: 18),
     ]),
-  );
-}
-
-class _TapRow extends StatelessWidget {
-  final String label;
-  final String? value;
-  final VoidCallback? onTap;
-  const _TapRow({required this.label, this.value, required this.onTap});
-  @override
-  Widget build(BuildContext context) => InkWell(
-    onTap: onTap,
-    child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: Row(children: [
-        Expanded(child: Text(label, style: T.t15.copyWith(color: T.textPrimary))),
-        if (value != null)
-          Text(value!, style: T.t15.copyWith(color: T.textSecondary)),
-        if (onTap != null) ...[
-          const SizedBox(width: 4),
-          const Icon(Icons.chevron_right, color: T.textTertiary, size: 16),
-        ],
-      ]),
-    ),
   );
 }
